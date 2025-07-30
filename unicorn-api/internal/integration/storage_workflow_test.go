@@ -47,11 +47,12 @@ func setupStorageIntegrationTest(t *testing.T) (*gin.Engine, func()) {
 
 	iamHandler := handlers.NewIAMHandler(iamStore, cfg)
 	storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
+	computeHandler := handlers.NewComputeHandler(cfg, iamStore)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, iamHandler, storageHandler)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler)
 
 	// Return cleanup function
 	cleanup := func() {
@@ -501,7 +502,7 @@ func TestStorageAuthorization(t *testing.T) {
 	orgID := createTestOrganization(t, router, "Auth Test Org")
 	adminRoleID := createTestRole(t, router, "auth_admin", []models.Permission{models.Read, models.Write, models.Delete})
 	userRoleID := createTestRole(t, router, "auth_user", []models.Permission{models.Read, models.Write})
-	
+
 	adminUser := createTestUser(t, router, orgID, adminRoleID, "authadmin@example.com", "adminpass")
 	_ = createTestUser(t, router, orgID, userRoleID, "authuser@example.com", "userpass")
 

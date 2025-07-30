@@ -390,6 +390,14 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) {
 		RoleID:         uuid.MustParse(req.RoleID),
 	}
 	if err := h.store.CreateAccount(account); err != nil {
+		if err == models.ErrDuplicateEmail {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error:      "Email already exists",
+				StatusCode: http.StatusInternalServerError,
+				Timestamp:  time.Now(),
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:      err.Error(),
 			StatusCode: http.StatusInternalServerError,

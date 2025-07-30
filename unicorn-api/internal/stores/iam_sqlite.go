@@ -2,6 +2,8 @@ package stores
 
 import (
 	"fmt"
+	"unicorn-api/internal/auth"
+	"unicorn-api/internal/config"
 	"unicorn-api/internal/models"
 
 	"github.com/google/uuid"
@@ -144,6 +146,11 @@ func (s *GORMIAMStore) GetOrganizationByName(name string) (
 
 // CreateAccount inserts a new account into the database
 func (s *GORMIAMStore) CreateAccount(account *models.Account) error {
+	// Check for duplicate email
+	var existing models.Account
+	if err := s.db.Where("email = ?", account.Email).First(&existing).Error; err == nil {
+		return models.ErrDuplicateEmail
+	}
 	if account.ID == uuid.Nil {
 		account.ID = uuid.New()
 	}
@@ -253,6 +260,58 @@ func (s *GORMIAMStore) GetAccountsByOrganizationID(orgID string) ([]models.Accou
 		return nil, fmt.Errorf("failed to get accounts by organization ID: %w", result.Error)
 	}
 	return accounts, nil
+}
+
+// SeedAdmin seeds the database with an admin organization, role, and user if not present
+func (s *GORMIAMStore) SeedAdmin(cfg *config.Config) error {
+	orgName := "admin-org"
+	roleName := "admin"
+	email := "admin@unicorn.local"
+	password := "admin123"
+
+	// 1. Create org if not exists
+	org, err := s.GetOrganizationByName(orgName)
+	if err != nil {
+		org = &models.Organization{
+			Name: orgName,
+		}
+		err = s.CreateOrganization(org)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 2. Create admin role if not exists
+	role, err := s.GetRoleByName(roleName)
+	if err != nil {
+		role = &models.Role{
+			Name:        roleName,
+			Permissions: models.Permissions{models.Read, models.Write, models.Delete},
+		}
+		err = s.CreateRole(role)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 3. Create admin user if not exists
+	acc, err := s.GetAccountByEmail(email)
+	if err != nil {
+		hash, _ := auth.HashPassword(password)
+		acc = &models.Account{
+			Name:           "Admin",
+			Email:          email,
+			Type:           models.AccountTypeUser,
+			PasswordHash:   hash,
+			OrganizationID: org.ID,
+			RoleID:         role.ID,
+		}
+		err = s.CreateAccount(acc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *GORMIAMStore) DB() *gorm.DB {

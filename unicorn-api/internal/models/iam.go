@@ -15,6 +15,7 @@ var (
 	ErrAccountNotFound    = errors.New("account not found")
 	ErrTokenInvalid       = errors.New("invalid token")
 	ErrPermissionDenied   = errors.New("permission denied")
+	ErrDuplicateEmail     = errors.New("email already exists")
 )
 
 // 2. roles & permissions

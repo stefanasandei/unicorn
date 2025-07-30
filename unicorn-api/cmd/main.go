@@ -43,11 +43,14 @@ var (
 	BuildTime = "unknown"
 )
 
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler) {
 	// setup the stores
 	store, err := stores.NewGORMIAMStore("test.db")
 	if err != nil {
 		panic("failed to initialize IAM store: " + err.Error())
+	}
+	if err := store.SeedAdmin(); err != nil {
+		panic("failed to seed admin: " + err.Error())
 	}
 
 	storagePath := os.Getenv("STORAGE_PATH")
@@ -61,8 +64,9 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
 
 	iamHandler := handlers.NewIAMHandler(store, cfg)
 	storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
+	computeHandler := handlers.NewComputeHandler(cfg, store)
 
-	return iamHandler, storageHandler
+	return iamHandler, storageHandler, computeHandler
 }
 
 func main() {
@@ -90,11 +94,11 @@ func main() {
 	router.Use(middleware.CORS())
 
 	// setup services
-	iamHandler, storageHandler := setupServices(cfg)
+	iamHandler, storageHandler, computeHandler := setupServices(cfg)
 
 	// Setup routes
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	routes.SetupRoutes(router, iamHandler, storageHandler)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler)
 	router.GET("/health", handlers.HealthCheck)
 
 	// Get port from environment or use default

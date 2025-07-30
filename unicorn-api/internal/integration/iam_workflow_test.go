@@ -35,11 +35,12 @@ func setupIntegrationTest(t *testing.T) (*gin.Engine, *stores.GORMIAMStore, func
 
 	handler := handlers.NewIAMHandler(store, cfg)
 	storageHandler := handlers.NewStorageHandler(&stores.GORMStorageStore{}, store, cfg)
+	computeHandler := handlers.NewComputeHandler(cfg, store)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, handler, storageHandler)
+	routes.SetupRoutes(router, handler, storageHandler, computeHandler)
 
 	// Return cleanup function
 	cleanup := func() {

@@ -145,11 +145,14 @@ var (
         BuildTime = "unknown"
 )
 
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler) {
         // setup the stores
         store, err := stores.NewGORMIAMStore("test.db")
         if err != nil {
                 panic("failed to initialize IAM store: " + err.Error())
+        }
+        if err := store.SeedAdmin(); err != nil {
+                panic("failed to seed admin: " + err.Error())
         }
 
         storagePath := os.Getenv("STORAGE_PATH")
@@ -163,40 +166,41 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
 
         iamHandler := handlers.NewIAMHandler(store, cfg)
         storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
+        computeHandler</span><span class="cov0" title="0"> := handlers.NewComputeHandler(cfg, store)
 
-        return iamHandler, storageHandler
+</span>        return iamHandler, storageHandler, computeHandler
 }
 
-</span>func main() {
-</span>        log.Println("Starting Unicorn API...")
+func main() {
+        log.Println("Star</span>ting Unicorn API...")
 
-        <span class="cov0" title="0">// Load environment variables
-        if err := godotenv.Load(); err != nil {
-                log.Println("No </span>.env file found, using system environment variables")
+        // Load environment variables
+        if err := g<span class="cov0" title="0">odotenv.Load(); err != nil {
+                log.Println("No .env file found, using system environment variables")
         }
 
-        // Initiali<span class="cov0" title="0">ze configuration
-        cfg := config.New()
+        // Initialize configuration
+</span>        cfg := config.New()
 
-        // Set Gin mode
+</span>        // Set Gin mode
         if cfg.Environment == "production" {
-</span>                gin.SetMode(gin.ReleaseMode)
-        }</span>
+        <span class="cov0" title="0">        gin.SetMode(gin.ReleaseMode)
+        }
 
         // Create router
-        <span class="cov0" title="0">router := gin.New()
+</span>        router := gin.New()
 
-        // Add middleware
+</span>        // Add middleware
         router.Use(middleware.Logger())
-</span>        router.Use(middleware.Recovery())
-        r</span>outer.Use(middleware.CORS())
+        <span class="cov0" title="0">router.Use(middleware.Recovery())
+        router.Use(middleware.CORS())
 
         // setup services
-        <span class="cov0" title="0">iamHandler, storageHandler := setupServices(cfg)
+        iamHandler, storageHandler, computeHandler := setupServices(cfg)
 
         // Setup routes
         router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-        routes.SetupRoutes(router, iamHandler, storageHandler)
+        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler)
         router.GET("/health", handlers.HealthCheck)
 
         // Get port from environment or use default
@@ -205,15 +209,15 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
                 port = "8080"
         }
 
-        log.Printf("Starting Unicorn API server on port %s", port)
+        log.Printf("St</span><span class="cov0" title="0">arting Unicorn API server on port %s", port)
         log.Printf("Version: %s, Build Time: %s", Version, BuildTime)
-        log.Printf("Environment: %s", cfg.Environment)
+        l</span>og.Printf("Environment: %s", cfg.Environment)
         log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
 
-</span>        // Start server
-        i</span>f err := router.Run(":" + port); err != nil {
+        // Start server
+        if err := router.Run(":" + port); err != nil {
                 log.Fatal("Failed to start server:", err)
-        <span class="cov0" title="0">}
+        }
 }
 </pre>
 		
@@ -665,7 +669,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "List buckets",
                 "parameters": [
@@ -705,7 +709,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Create bucket",
                 "parameters": [
@@ -762,7 +766,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "List files",
                 "parameters": [
@@ -827,7 +831,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Upload file",
                 "parameters": [
@@ -895,7 +899,7 @@ const docTemplate = `{
                     "application/octet-stream"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Download file",
                 "parameters": [
@@ -958,7 +962,7 @@ const docTemplate = `{
             "delete": {
                 "description": "Delete a file from a storage bucket",
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Delete file",
                 "parameters": [
@@ -1031,6 +1035,229 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handlers.HealthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/secrets": {
+            "get": {
+                "description": "List all secrets for the authenticated user (does not return secret values)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "List secrets",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SecretResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new secret for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Create secret",
+                "parameters": [
+                    {
+                        "description": "Secret details to create",
+                        "name": "secret",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SecretBodyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecretResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/secrets/{id}": {
+            "get": {
+                "description": "Get a secret and its decrypted value for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Get secret",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+            <span class="cov0" title="0">        "400": {
+                        "description": "Bad Request",
+ </span>                       "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the value and/or metadata for a secret",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Update secret",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Secret update",
+                        "name": "secret",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSecretBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a secret for the authenticated user",
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Delete secret",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
@@ -1154,9 +1381,9 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.Role"
                         }
                     ]
-            <span class="cov0" title="0">    }
+                }
             }
- </span>       },
+        },
         "handlers.CreateUserRequest": {
             "type": "object",
             "required": [
@@ -1590,6 +1817,48 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SecretBodyRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "value"
+            ],
+            "properties": {
+                "metadata": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SecretResponse": {
+            "description": "A secret response without sensitive data.",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.StorageBucket": {
             "description": "A storage bucket owned by a user, containing files.",
             "type": "object",
@@ -1619,6 +1888,17 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "description": "The ID of the user who owns the bucket",
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateSecretBody": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "type": "string"
+                },
+                "value": {
                     "type": "string"
                 }
             }
@@ -2206,17 +2486,25 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3
                 RoleID:         uuid.MustParse(req.RoleID),
         }
         if err := h.store.CreateAccount(account); err != nil </span><span class="cov0" title="0">{
+                if err == models.ErrDuplicateEmail {
+                        c.JSON(http.StatusInternalServerError, ErrorResponse{
+                                Error:      "Email already exists",
+                                StatusCode: http.StatusInternalServerError,
+                                Timestamp:  time.Now(),
+                        })
+                </span>        return
+        <span class="cov1" title="1">        }
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
                         Error:      err.Error(),
-                        StatusCode: http.StatusInternalServerError,
+                        </span>StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov1" title="1">c.JSON(http.StatusCreated, CreateUserResponse{
+        }
+        c.JSON(http.StatusCreated, CreateUserResponse{
                 Account: *account,
                 Message: "User created successfully",
-        })</span>
+        })
 }
 
 // Login godoc
@@ -2225,59 +2513,59 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3
 // @Tags         IAM
 // @Accept       json
 // @Produce      json
-// @Param        credentials  body  LoginRequest  true  "Login credentials"
+// @Param        credentials  body  LoginReque</span><span class="cov1" title="1">st  true  "Login credentials"
 // @Success      200   {object}  LoginResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/login [post]
-func (h *IAMHandler) Login(c *gin.Context) <span class="cov7" title="4">{
+func (h *IAMHandler) Login(c *gin.Context) {
         var req LoginRequest
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov1" title="1">{
-                c.JSON(http.StatusBadRequest, ErrorResponse{
-                        Error:      "Invalid request",
+        i</span>f err := c.ShouldBindJSON(&amp;req); err != nil {
+        <span class="cov6" title="3">        c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      </span><span class="cov1" title="1">"Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov6" title="3">account, err := h.store.GetAccountByEmail(req.Email)
-        if err != nil </span><span class="cov1" title="1">{
-                c.JSON(http.StatusUnauthorized, ErrorResponse{
+        }
+        a</span>ccount, err := h.store.GetAccountByEmail(req.Email)
+        <span class="cov4" title="2">if err != nil {
+</span>                c.JSON(http.StatusUnauthorized, ErrorResponse{
                         Error:      "Invalid credentials",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
                 return
         }</span>
-        <span class="cov4" title="2">if !auth.CheckPasswordHash(req.Password, account.PasswordHash) </span><span class="cov1" title="1">{
-                c.JSON(http.StatusUnauthorized, ErrorResponse{
+        <span class="cov1" title="1">if !auth.CheckPasswordHash(req.Password, account.PasswordHash) {
+                c.JSON(http.S</span><span class="cov0" title="0">tatusUnauthorized, ErrorResponse{
                         Error:      "Invalid credentials",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov1" title="1">token, err := auth.GenerateToken(account.ID.String(), account.RoleID.String(), h.config)
-        if err != nil </span><span class="cov0" title="0">{
+        }
+        t</span>oken, err := auth.GenerateToken(account.ID.String(), account.RoleID.String(), h.config)
+        if err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
-                        Error:      "Failed to generate token",
+        <span class="cov1" title="1">                Error:      "Failed to generate token",
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
+        }
 
-        // Calculate expiration time (assuming 24 hours)
-        <span class="cov1" title="1">expiresAt := time.Now().Add(24 * time.Hour)
+        //</span> Calculate expiration time (assuming 24 hours)
+        expiresAt := time.Now().Add(24 * time.Hour)
 
         c.JSON(http.StatusOK, LoginResponse{
                 Token:     token,
                 TokenType: "Bearer",
                 ExpiresAt: expiresAt,
                 Message:   "Login successful",
-        })</span>
+        })
 }
 
 // RefreshToken godoc
@@ -2286,51 +2574,51 @@ func (h *IAMHandler) Login(c *gin.Context) <span class="cov7" title="4">{
 // @Tags         IAM
 // @Accept       json
 // @Produce      json
-// @Param        token  body  RefreshTokenRequest  true  "Refresh token request"
+// @Param        token  body  RefreshTokenRequ</span><span class="cov0" title="0">est  true  "Refresh token request"
 // @Success      200   {object}  RefreshTokenResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/token/refresh [post]
-func (h *IAMHandler) RefreshToken(c *gin.Context) <span class="cov0" title="0">{
+func (h *IAMHandler) RefreshToken(c *gin.Context) {
         var req RefreshTokenRequest
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
-                c.JSON(http.StatusBadRequest, ErrorResponse{
-                        Error:      "Invalid request",
+        i</span>f err := c.ShouldBindJSON(&amp;req); err != nil {
+        <span class="cov0" title="0">        c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      </span><span class="cov0" title="0">"Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov0" title="0">claims, err := auth.ValidateToken(req.Token, h.config)
-        if err != nil </span><span class="cov0" title="0">{
-                c.JSON(http.StatusUnauthorized, ErrorResponse{
+        }
+        c</span>laims, err := auth.ValidateToken(req.Token, h.config)
+        <span class="cov0" title="0">if err != nil {
+                c.JSON(http.S</span><span class="cov0" title="0">tatusUnauthorized, ErrorResponse{
                         Error:      "Invalid token",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov0" title="0">token, err := auth.GenerateToken(claims.AccountID, claims.RoleID, h.config)
-        if err != nil </span><span class="cov0" title="0">{
+        }
+        t</span>oken, err := auth.GenerateToken(claims.AccountID, claims.RoleID, h.config)
+        if err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
-                        Error:      "Failed to generate token",
+        <span class="cov0" title="0">                Error:      "Failed to generate token",
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
+        }
 
-        // Calculate expiration time (assuming 24 hours)
-        <span class="cov0" title="0">expiresAt := time.Now().Add(24 * time.Hour)
+        //</span> Calculate expiration time (assuming 24 hours)
+        expiresAt := time.Now().Add(24 * time.Hour)
 
         c.JSON(http.StatusOK, RefreshTokenResponse{
                 Token:     token,
                 TokenType: "Bearer",
                 ExpiresAt: expiresAt,
                 Message:   "Token refreshed successfully",
-        })</span>
+        })
 }
 
 // ValidateToken godoc
@@ -2338,32 +2626,32 @@ func (h *IAMHandler) RefreshToken(c *gin.Context) <span class="cov0" title="0">{
 // @Description  Validate a JWT token and return its claims
 // @Tags         IAM
 // @Accept       json
-// @Produce      json
+// @Produce     </span><span class="cov1" title="1"> json
 // @Param        token  query  string  true  "JWT token"
 // @Success      200   {object}  ValidateTokenResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
 // @Router       /api/v1/token/validate [get]
-func (h *IAMHandler) ValidateToken(c *gin.Context) <span class="cov6" title="3">{
-        token := c.Query("token")
-        if token == "" </span><span class="cov1" title="1">{
-                c.JSON(http.StatusBadRequest, ErrorResponse{
+func (h *IAMHandler) ValidateToken(c *gin.Context) {
+        t</span>oken := c.Query("token")
+        <span class="cov4" title="2">if token == "" {
+                c.JSON(http.S</span><span class="cov4" title="2">tatusBadRequest, ErrorResponse{
                         Error:      "Token required",
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov4" title="2">claims, err := auth.ValidateToken(token, h.config)
-        if err != nil </span><span class="cov4" title="2">{
+        }
+        c</span>laims, err := auth.ValidateToken(token, h.config)
+        <span class="cov0" title="0">if err != nil {
                 c.JSON(http.StatusUnauthorized, ErrorResponse{
                         Error:      "Invalid token",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
                 return
-        }</span>
-        <span class="cov0" title="0">c.JSON(http.StatusOK, ValidateTokenResponse{
+        }
+        c.</span>JSON(http.StatusOK, ValidateTokenResponse{
                 Claims: TokenClaimsResponse{
                         AccountID: claims.AccountID,
                         RoleID:    claims.RoleID,
@@ -2371,7 +2659,7 @@ func (h *IAMHandler) ValidateToken(c *gin.Context) <span class="cov6" title="3">
                 },
                 Valid:   true,
                 Message: "Token is valid",
-        })</span>
+        })
 }
 
 // --- New Response Structures ---
@@ -2617,6 +2905,7 @@ var (
         ErrAccountNotFound    = errors.New("account not found")
         ErrTokenInvalid       = errors.New("invalid token")
         ErrPermissionDenied   = errors.New("permission denied")
+        ErrDuplicateEmail     = errors.New("email already exists")
 )
 
 // 2. roles &amp; permissions
@@ -2631,50 +2920,50 @@ const (
         Delete                   // Delete permission (2)
 )
 
-// String returns the string representation of the permission
-func (p Permission) String() string <span class="cov0" title="0">{
-        switch p </span>{
-        case Read:<span class="cov0" title="0">
-                return "read"</span>
-        case Write:<span class="cov0" title="0">
-                return "write"</span>
-        case Delete:<span class="cov0" title="0">
-                return "delete"</span>
-        default:<span class="cov0" title="0">
-                return "unknown"</span>
+// String returns the string represe<span class="cov0" title="0">ntation of the permission
+func (p Pe</span>rmission) String() string {
+        switch p {<span class="cov0" title="0">
+        case Read:
+</span>                return "re<span class="cov0" title="0">ad"
+        case Write:
+</span>                return "wri<span class="cov0" title="0">te"
+        case Delete:
+</span>                return <span class="cov0" title="0">"delete"
+        default:
+</span>                return "unknown"
         }
 }
 
 // Permissions represents a slice of Permission that can be marshalled/unmarshalled to JSON
 type Permissions []Permission
 
-// Value implements the driver.Valuer interface for database serialization.
-func (p Permissions) Value() (driver.Value, error) <span class="cov0" title="0">{
-        if len(p) == 0 </span><span class="cov0" title="0">{
-                return "[]", nil // Store empty array as "[]"
-        }</span>
-        <span class="cov0" title="0">j, err := json.Marshal(p)
-        return string(j), err</span>
+// Value implements the driver.Valuer interface for<span class="cov0" title="0"> database serialization.
+func (p Permissi</span><span class="cov0" title="0">ons) Value() (driver.Value, error) {
+        if len(p) == 0 {
+                </span>return "[]", nil // Store empty array as "[]"
+        <span class="cov0" title="0">}
+        j, err := json.Marsha</span>l(p)
+        return string(j), err
 }
 
-// Scan implements the sql.Scanner interface for database deserialization.
-func (p *Permissions) Scan(src interface{}) error <span class="cov0" title="0">{
+// Scan implements the sql.Scanner interface for d<span class="cov0" title="0">atabase deserialization.
+func (p *Permissions) Scan(src interface{}) error {
         var source []byte
-        switch src := src.(type) </span>{
-        case string:<span class="cov0" title="0">
-                source = []byte(src)</span>
-        case []byte:<span class="cov0" title="0">
-                source = src</span>
-        default:<span class="cov0" title="0">
-                return errors.New("incompatible type for Permissions")</span>
+</span>        switch src :<span class="cov0" title="0">= src.(type) {
+        case string:
+</span>                source = []<span class="cov0" title="0">byte(src)
+        case []byte:
+</span>                source <span class="cov0" title="0">= src
+        default:
+</span>                return errors.New("incompatible type for Permissions")
         }
 
-        <span class="cov0" title="0">if len(source) == 0 </span><span class="cov0" title="0">{
+</span>        if len(source) == 0 {
                 *p = []Permission{} // Handle empty string as empty slice
-                return nil
-        }</span>
+                </span>return nil
+        }
 
-        <span class="cov0" title="0">return json.Unmarshal(source, p)</span>
+</span>        return json.Unmarshal(source, p)
 }
 
 // Role represents a user role in the system with associated permissions
@@ -2786,7 +3075,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, <span class="cov0" title="0">storageHandler *handlers.StorageHandler) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, <span class="cov0" title="0">storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler) {
         // API v1 group
         v1 := router.Group("/api/v1")
         </span><span class="cov0" title="0">{
@@ -2808,6 +3097,10 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, <span clas
                 v1.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
                 v1.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
                 v1.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+
+                // 3. Compute
+                v1.POST("/compute/create", computeHandler.CreateCompute)
+                v1.GET("/compute/list", computeHandler.ListCompute)
         }
 }
 </pre>
@@ -2816,6 +3109,8 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, <span clas
 
 import (
         "fmt"
+        "unicorn-api/internal/auth"
+        "unicorn-api/internal/config"
         "unicorn-api/internal/models"
 
         "github.com/google/uuid"
@@ -2830,125 +3125,125 @@ type GORMIAMStore struct {
 }
 
 // NewGORMIAMStore creates a new GORMIAMStore
-func NewGORMIAMStore(dataSourceName string) (*GORMIAMStore, error) <span class="cov10" title="8">{
+func NewGORMIAMStore(dataSourceName string) (*GORMIAMStore, error) {
         db, err := gorm.Open(sqlite.Open(dataSourceName), &amp;gorm.Config{
-                Logger: logger.Default.LogMode(logger.Silent),
+                Logger: logge</span><span class="cov0" title="0">r.Default.LogMode(logger.Silent),
         })
-        if err != nil </span><span class="cov0" title="0">{
+        i</span>f err != nil {
                 return nil, fmt.Errorf("failed to open database with GORM: %w", err)
-        }</span>
+        }
 
         // AutoMigrate will create and update tables based on your models
-        <span class="cov10" title="8">err = db.AutoMigrate(
+        err = db.AutoMigrate(
                 &amp;models.Role{},
                 &amp;models.Organization{},
-                &amp;models.Account{},
+                &amp;models.Accou</span><span class="cov0" title="0">nt{},
         )
-        if err != nil </span><span class="cov0" title="0">{
+        i</span>f err != nil {
                 return nil, fmt.Errorf("failed to auto migrate database schema: %w", err)
-        }</span>
-
-        <span class="cov10" title="8">return &amp;GORMIAMStore{db: db}, nil</span>
+        <span class="cov10" title="8">}
+</span>
+        return &amp;GORMIAMStore{db: db}, nil
 }
 
 // CreateRole inserts a new role into the database
-func (s *GORMIAMStore) CreateRole(role *models.Role) error <span class="cov10" title="8">{
+func (s *GORMIAMStore) CreateRole(role *models.Role) error {
         // GORM will automatically use the UUID in role.ID if it's set.
-        // If ID is zero-value (empty UUID), GORM won't auto-generate it.
+        // If ID is zero-value </span><span class="cov1" title="1">(empty UUID), GORM won't auto-generate it.
         // You might want to ensure ID is generated before calling Create.
-        if role.ID == uuid.Nil </span><span class="cov1" title="1">{
-                role.ID = uuid.New()
-        }</span>
-        <span class="cov10" title="8">result := s.db.Create(role)
-        if result.Error != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to create role: %w", result.Error)
-        }</span>
-        <span class="cov10" title="8">return nil</span>
+        i</span>f role.ID == uuid.Nil {
+        <span class="cov10" title="8">        role.ID = uuid.New()
+        }
+</span>        result := s.db.Create(role)
+        i</span>f result.Error != nil {
+        <span class="cov10" title="8">        return fm</span>t.Errorf("failed to create role: %w", result.Error)
+        }
+        return nil
 }
 
 // AssignRole assigns a role to an account (one-to-one relationship based on Account.RoleID)
-func (s *GORMIAMStore) AssignRole(accountID, roleID string) error <span class="cov7" title="4">{
+func (s *GORMIA</span><span class="cov1" title="1">MStore) AssignRole(accountID, roleID string) error {
         accUUID, err := uuid.Parse(accountID)
-        if err != nil </span><span class="cov1" title="1">{
-                return fmt.Errorf("invalid account ID format: %w", err)
-        }</span>
-        <span class="cov5" title="3">roleUUID, err := uuid.Parse(roleID)
-        if err != nil </span><span class="cov1" title="1">{
+        i</span>f err != nil {
+        <span class="cov5" title="3">        return fmt.Errorf("invalid account ID format: %w", err)
+        }
+</span>        roleUUID, err := uuid.Parse(roleID)
+        i</span>f err != nil {
                 return fmt.Errorf("invalid role ID format: %w", err)
-        }</span>
+        }
 
         // Find the account
-        <span class="cov4" title="2">var account models.Account
-        result := s.db.Where("id = ?", accUUID).First(&amp;account)
-        if result.Error != nil </span><span class="cov1" title="1">{
-                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
-                        return models.ErrAccountNotFound // Use your custom error
-                }</span>
-                <span class="cov0" title="0">return fmt.Errorf("failed to find account: %w", result.Error)</span>
+        var account models.Acco</span><span class="cov1" title="1">unt
+        result := s.db.Where("id = ?", accUUID).Fir</span><span class="cov1" title="1">st(&amp;account)
+        if result.Error != nil {
+                i</span>f result.Error == gorm.ErrRecordNotFound {
+                <span class="cov0" title="0">        return models.ErrAccountNotFound // Use your custom error
+</span>                }
+                return fmt.Errorf("failed to find account: %w", result.Error)
         }
 
         // Assign the role ID
-        <span class="cov1" title="1">account.RoleID = roleUUID
+        account.RoleID = roleUUID
 
-        // Save the updated account
+        // Save the updated acc</span><span class="cov0" title="0">ount
         result = s.db.Save(&amp;account)
-        if result.Error != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to assign role to account: %w", result.Error)
-        }</span>
-        <span class="cov1" title="1">return nil</span>
+        i</span>f result.Error != nil {
+        <span class="cov1" title="1">        return fm</span>t.Errorf("failed to assign role to account: %w", result.Error)
+        }
+        return nil
 }
 
 // GetRoleByName retrieves a role by its name
-func (s *GORMIAMStore) GetRoleByName(name string) (*models.Role, error) <span class="cov4" title="2">{
+func (s *GORMIAMStore) GetRoleByName(name string) (*models.Role, error) {
         var role models.Role
-        result := s.db.Where("name = ?", name).First(&amp;role)
-        if result.Error != nil </span><span class="cov1" title="1">{
-                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
-                        return nil, fmt.Errorf("role with name '%s' not found", name)
-                }</span>
-                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get role by name: %w", result.Error)</span>
-        }
-        <span class="cov1" title="1">return &amp;role, nil</span>
-}
-
-// GetRoleByID retrieves a role by its ID
-func (s *GORMIAMStore) GetRoleByID(roleID string) (*models.Role, error) {
-        uid, err := uuid.Parse</span><span class="cov1" title="1">(roleID)
-        if err != nil {
-                </span>return nil, fmt.Errorf("invalid role ID: %w", err)
-        <span class="cov9" title="7">}
-        var role models.Role
-</span>        result := s.db.Where("id = ?", uid).First(&amp;role)
-        i</span>f result.Error != nil {
-        <span class="cov9" title="7">        if result</span>.Error == gorm.ErrRecordNotFound {
-                        return nil, fmt.Errorf("role with ID '%s' not found", roleID)
-                }
-                return nil, fmt.Errorf("failed to get role by ID: %w", result.Error)
+</span>        result := s.db.Where("name = ?", name).Firs</span><span class="cov1" title="1">t(&amp;role)
+        if result.Error != nil {
+                i</span>f result.Error == gorm.ErrRecordNotFound {
+                <span class="cov0" title="0">        return nil, fmt.Errorf("role with name '%s' not found", name)
+</span>                }
+        <span class="cov1" title="1">        return nil, fmt.</span>Errorf("failed to get role by name: %w", result.Error)
         }
         return &amp;role, nil
 }
 
-// CreateOrganization inserts a new organization into the database
-func (s *GORMIAMStore) CreateOrganization(org *models.Organization) error {
-        if org.ID == uuid.Nil {</span><span class="cov1" title="1">
-                org.ID = uuid.New()
-</span>        }
-        re</span>sult := s.db.Create(org)
-        i<span class="cov0" title="0">f result.Error != nil {
-</span>                return fmt.Errorf("failed to create organization: %w", result.Error)
-        <span class="cov1" title="1">}
-</span>        return nil
+// GetRoleByID retrieve</span><span class="cov1" title="1">s a role by its ID
+func (s *GORMIAMStore) GetRoleByID(roleID string) (*models.Role, error) {
+        u</span>id, err := uuid.Parse(roleID)
+        <span class="cov9" title="7">if err != nil {
+                return nil, fmt.Errorf</span><span class="cov0" title="0">("invalid role ID: %w", err)
+        }
+        v</span>ar role models.Role
+        <span class="cov9" title="7">result := </span>s.db.Where("id = ?", uid).First(&amp;role)
+        if result.Error != nil {
+                if result.Error == gorm.ErrRecordNotFound {
+                        return nil, fmt.Errorf("role with ID '%s' not found", roleID)
+                }
+                return nil, fmt.Errorf("failed to get role by ID: %w", result.Error)
+        }
+        r<span class="cov4" title="2">eturn &amp;role, nil
 }
 
-// GetOrganizationByName retrieves an organization by its name
-func (s *GORMIAMStore) GetO</span><span class="cov0" title="0">rganizationByName(name string) (
-        *models.Organization,
-        e</span>rror,
-)<span class="cov7" title="5"> {
-        var org models.Organiza</span><span class="cov0" title="0">tion
-        result := s.db.Where("name = ?", name).First(&amp;org)
-        i</span>f result.Error != nil {
-        <span class="cov7" title="5">        if result</span>.Error == gorm.ErrRecordNotFound {
+// CreateOrganization in</span><span class="cov1" title="1">serts a new organization into the database
+func (s *GORMIAMStore) CreateOrganization(or</span><span class="cov1" title="1">g *models.Organization) error {
+        if org.ID == uuid.Nil {
+                o</span>rg.ID = uuid.New()
+        }<span class="cov0" title="0">
+</span>        result := s.db.Create(org)
+        <span class="cov1" title="1">if result.Error </span>!= nil {
+                return fmt.Errorf("failed to create organization: %w", result.Error)
+        }
+        return nil
+}
+
+</span>// GetOrganizationByName retrieves an organization by its name
+fu</span>nc (s *GORMIAMStore) GetOrganizationByName(name string) (
+        <span class="cov7" title="5">*models.Organization,
+        error,
+</span>) {
+        v</span>ar org models.Organization
+        <span class="cov7" title="5">result := </span>s.db.Where("name = ?", name).First(&amp;org)
+        if result.Error != nil {
+                if result.Error == gorm.ErrRecordNotFound {
                         return nil, fmt.Errorf("organization with name '%s' not found", name)
                 }
                 return nil, fmt.Errorf("failed to get organization by name: %w", result.Error)
@@ -2956,31 +3251,36 @@ func (s *GORMIAMStore) GetO</span><span class="cov0" title="0">rganizationByName
         return &amp;org, nil
 }
 
-// CreateAccount inserts a new account into the database
-func (s *GORMIAMStore) C</span><span class="cov1" title="1">reateAccount(account *models.Account) error {
+</span>// CreateAccount inserts a new account into </span><span class="cov1" title="1">the database
+func (s *GORMIAMStore) CreateAccount(account *models.Account) error {
+        //</span> Check for duplicate email
+        v<span class="cov0" title="0">ar existing models.Account
+</span>        if err := s.db.Where("email = ?", account.Email).First(&amp;existing).Error; err == nil {
+        <span class="cov5" title="3">        return models.ErrDu</span>plicateEmail
+        }
         if account.ID == uuid.Nil {
-</span>                account.ID = uuid.New()
+                account.ID = uuid.New()
         }
-</span>        r<span class="cov0" title="0">esult := s.db.Create(account)
-</span>        if result.Error != nil {
-        <span class="cov5" title="3">        return fmt.Errorf("</span>failed to create account: %w", result.Error)
-        }
-        return nil
-}
+        result := s.db.Create(account)
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create account: %w", result.Error)
+        }</span>
+        <span class="cov1" title="1">return nil
+</span>}
 
-// GetAccountByEmail retrieves an account by its email address
-func (s *GORMIAMStore) G</span><span class="cov0" title="0">etAccountByEmail(email string) (*models.Account, error) {
+</span>/<span class="cov1" title="1">/ GetAccou</span>ntByEmail retrieves an account by its email address
+func (s *GORMIAMStore) GetAccountByEmail(email string) (*models.Account, error) {
         var account models.Account
-        /</span>/ Preload the Organization and Role if you need their data when fetching an account
-        <span class="cov1" title="1">// This makes sure GORM fetc</span><span class="cov0" title="0">hes the associated data in one query or a few queries
-        result := s.db.Where("email = ?", email).Preload("Organization").Preload("Role").First(&amp;account)
-        i</span>f result.Error != nil {
-        <span class="cov1" title="1">        if result</span>.Error == gorm.ErrRecordNotFound {
+        // Preload the Organization and Role<span class="cov0" title="0"> if you need their data when fetching an account
+        // This makes sure GORM fetches the associated data in one query or a few queries
+        </span>result := s.db.Where("email = ?", email).Preload("Organization").Preload("Role").First(&amp;account)
+        if result.Error != nil {
+                if result.Error == gorm.ErrRecordNotFound {
                         return nil, models.ErrAccountNotFound // Use your custom error
                 }
-                return nil, fmt.Errorf("failed to g<span class="cov0" title="0">et account by email: %w", result.Error)
+                return nil, fmt.Errorf("failed to get account by email: %w", result.Error)
         }
-        </span>return &amp;account, nil
+        return &amp;account, nil
 }
 
 // UpdateAccount updates an existing account in the database
@@ -3067,6 +3367,58 @@ func (s *GORMIAMStore) GetAccountsByOrganizationID(orgID string) ([]models.Accou
                 return nil, fmt.Errorf("failed to get accounts by organization ID: %w", result.Error)
         }
         return accounts, nil
+}
+
+// SeedAdmin seeds the database with an admin organization, role, and user if not present
+func (s *GORMIAMStore) SeedAdmin(cfg *config.Config) error {
+        orgName := "admin-org"
+        roleName := "admin"
+        email := "admin@unicorn.local"
+        password := "admin123"
+
+        // 1. Create org if not exists
+        org, err := s.GetOrganizationByName(orgName)
+        if err != nil {
+                org = &amp;models.Organization{
+                        Name: orgName,
+                }
+                err = s.CreateOrganization(org)
+                if err != nil {
+                        return err
+                }
+        }
+
+        // 2. Create admin role if not exists
+        role, err := s.GetRoleByName(roleName)
+        if err != nil {
+                role = &amp;models.Role{
+                        Name:        roleName,
+                        Permissions: models.Permissions{models.Read, models.Write, models.Delete},
+                }
+                err = s.CreateRole(role)
+                if err != nil {
+                        return err
+                }
+        }
+
+        // 3. Create admin user if not exists
+        acc, err := s.GetAccountByEmail(email)
+        if err != nil {
+                hash, _ := auth.HashPassword(password)
+                acc = &amp;models.Account{
+                        Name:           "Admin",
+                        Email:          email,
+                        Type:           models.AccountTypeUser,
+                        PasswordHash:   hash,
+                        OrganizationID: org.ID,
+                        RoleID:         role.ID,
+                }
+                err = s.CreateAccount(acc)
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
 }
 
 func (s *GORMIAMStore) DB() *gorm.DB {

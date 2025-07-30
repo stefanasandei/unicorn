@@ -7,7 +7,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler) {
 	// API v1 group
 	v1 := router.Group("/api/v1")
 	{
@@ -29,5 +29,9 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
 		v1.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
 		v1.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
 		v1.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+
+		// 3. Compute
+		v1.POST("/compute/create", computeHandler.CreateCompute)
+		v1.GET("/compute/list", computeHandler.ListCompute)
 	}
 }
