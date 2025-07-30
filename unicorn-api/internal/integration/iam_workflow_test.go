@@ -33,14 +33,21 @@ func setupIntegrationTest(t *testing.T) (*gin.Engine, *stores.GORMIAMStore, func
 		Environment:     "test",
 	}
 
+	secretsStore, err := stores.NewSecretStore("test.db")
+	if err != nil {
+		panic("failed to initialize secrets store: " + err.Error())
+	}
+
 	handler := handlers.NewIAMHandler(store, cfg)
 	storageHandler := handlers.NewStorageHandler(&stores.GORMStorageStore{}, store, cfg)
 	computeHandler := handlers.NewComputeHandler(cfg, store)
+	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
+	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, handler, storageHandler, computeHandler)
+	routes.SetupRoutes(router, handler, storageHandler, computeHandler, lambdaHandler, secretsHandler)
 
 	// Return cleanup function
 	cleanup := func() {

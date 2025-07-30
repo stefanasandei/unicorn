@@ -45,14 +45,21 @@ func setupStorageIntegrationTest(t *testing.T) (*gin.Engine, func()) {
 		Environment:     "test",
 	}
 
+	secretsStore, err := stores.NewSecretStore("test.db")
+	if err != nil {
+		panic("failed to initialize secrets store: " + err.Error())
+	}
+
 	iamHandler := handlers.NewIAMHandler(iamStore, cfg)
 	storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
 	computeHandler := handlers.NewComputeHandler(cfg, iamStore)
+	lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
+	secretsHandler := handlers.NewSecretsHandler(secretsStore, iamStore, cfg)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler)
 
 	// Return cleanup function
 	cleanup := func() {

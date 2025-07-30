@@ -13,6 +13,12 @@ type Config struct {
 
 	JWTSecret       string
 	TokenExpiration time.Duration
+
+	// Debug API token for Swagger UI testing
+	DebugAPIToken string
+
+	// Service URLs
+	LambdaURL string
 }
 
 // New creates a new Config instance
@@ -24,6 +30,9 @@ func New() *Config {
 
 		TokenExpiration: time.Duration(time.Hour * 24),
 		JWTSecret:       getEnv("JWTSecret", "lmao"),
+
+		// Service URLs
+		LambdaURL: getEnv("LAMBDA_URL", "http://localhost:8081"),
 	}
 }
 

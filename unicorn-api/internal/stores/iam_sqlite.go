@@ -311,6 +311,16 @@ func (s *GORMIAMStore) SeedAdmin(cfg *config.Config) error {
 			return err
 		}
 	}
+
+	// 4. Generate a static debug API token for the admin user
+	if cfg != nil {
+		// Generate a static debug token that doesn't expire
+		debugToken, err := auth.GenerateToken(acc.ID.String(), role.ID.String(), cfg)
+		if err == nil {
+			cfg.DebugAPIToken = debugToken
+		}
+	}
+
 	return nil
 }
 

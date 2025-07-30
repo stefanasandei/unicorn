@@ -566,6 +566,32 @@ func (h *IAMHandler) ValidateToken(c *gin.Context) {
 	})
 }
 
+// GetDebugToken godoc
+// @Summary      Get a debug API token for testing
+// @Description  Returns a static API token with admin permissions for testing purposes
+// @Tags         IAM
+// @Accept       json
+// @Produce      json
+// @Success      200   {object}  map[string]string
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/debug/token [get]
+func (h *IAMHandler) GetDebugToken(c *gin.Context) {
+	if h.config.DebugAPIToken == "" {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:      "Debug token not available",
+			StatusCode: http.StatusInternalServerError,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":      h.config.DebugAPIToken,
+		"token_type": "Bearer",
+		"message":    "This token has admin permissions and should only be used for testing",
+	})
+}
+
 // --- New Response Structures ---
 
 // GetRolesResponse represents the response for listing roles

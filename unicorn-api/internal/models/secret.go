@@ -1,9 +1,11 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Secret represents an encrypted secret stored in the database.
@@ -23,7 +25,8 @@ type Secret struct {
 	// The ID of the user who owns the secret
 	UserID uuid.UUID `json:"user_id" gorm:"type:text;not null;index"`
 	// Additional metadata for the secret (JSON)
-	Metadata string `json:"metadata,omitempty" gorm:"type:text"`
+	Metadata    map[string]string `gorm:"-" json:"metadata"`
+	MetadataRaw string            `gorm:"type:text" json:"-"`
 }
 
 // SecretResponse represents the public view of a secret (without the encrypted value)
@@ -75,4 +78,28 @@ type SecretBodyRequest struct {
 type UpdateSecretBody struct {
 	Value    string `json:"value"`
 	Metadata string `json:"metadata"`
+}
+
+// GORM hooks to marshal/unmarshal Metadata
+func (s *Secret) BeforeSave(tx *gorm.DB) (err error) {
+	if s.Metadata != nil {
+		b, err := json.Marshal(s.Metadata)
+		if err != nil {
+			return err
+		}
+		s.MetadataRaw = string(b)
+	}
+	return nil
+}
+
+func (s *Secret) AfterFind(tx *gorm.DB) (err error) {
+	if s.MetadataRaw != "" {
+		var m map[string]string
+		err := json.Unmarshal([]byte(s.MetadataRaw), &m)
+		if err != nil {
+			return err
+		}
+		s.Metadata = m
+	}
+	return nil
 }

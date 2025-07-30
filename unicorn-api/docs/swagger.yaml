@@ -391,6 +391,49 @@ definitions:
     x-enum-varnames:
     - AccountTypeUser
     - AccountTypeBot
+  models.ComputeContainerInfo:
+    properties:
+      id:
+        type: string
+      image:
+        type: string
+      ports:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        type: string
+    type: object
+  models.ComputeCreateRequest:
+    properties:
+      expose_port:
+        type: string
+      image:
+        type: string
+      ports:
+        additionalProperties:
+          type: string
+        type: object
+      preset:
+        allOf:
+        - $ref: '#/definitions/models.ComputePreset'
+        enum:
+        - micro
+        - small
+    required:
+    - expose_port
+    - image
+    - ports
+    - preset
+    type: object
+  models.ComputePreset:
+    enum:
+    - micro
+    - small
+    type: string
+    x-enum-varnames:
+    - PresetMicro
+    - PresetSmall
   models.File:
     description: A file stored in a storage bucket.
     properties:
@@ -417,6 +460,99 @@ definitions:
         type: string
       updated_at:
         description: The last update timestamp
+        type: string
+    type: object
+  models.LambdaExecuteRequest:
+    properties:
+      process:
+        $ref: '#/definitions/models.LambdaProcessInfo'
+      project:
+        properties:
+          entry:
+            example: |-
+              import utils
+              print(utils.add(1,2))
+            type: string
+          files:
+            items:
+              $ref: '#/definitions/models.LambdaFile'
+            type: array
+        required:
+        - files
+        type: object
+      runtime:
+        properties:
+          name:
+            example: python3
+            type: string
+          version:
+            example: "3.12"
+            type: string
+        required:
+        - name
+        type: object
+    type: object
+  models.LambdaExecuteResponse:
+    properties:
+      output:
+        example: |
+          3
+        type: string
+      runtime:
+        example: python3
+        type: string
+      status:
+        example: success
+        type: string
+      time:
+        example: 0.023s
+        type: string
+    type: object
+  models.LambdaFile:
+    properties:
+      contents:
+        example: "def add(a, b):\n\treturn a + b"
+        type: string
+      name:
+        example: utils.py
+        type: string
+    required:
+    - contents
+    - name
+    type: object
+  models.LambdaPermissions:
+    properties:
+      network:
+        example: false
+        type: boolean
+      read:
+        example: true
+        type: boolean
+      write:
+        example: false
+        type: boolean
+    type: object
+  models.LambdaProcessInfo:
+    properties:
+      env:
+        additionalProperties:
+          type: string
+        example:
+          '{"DEBUG"': '"true"}'
+        type: object
+      max_opened_files:
+        example: 10
+        type: integer
+      max_processes:
+        example: 5
+        type: integer
+      permissions:
+        $ref: '#/definitions/models.LambdaPermissions'
+      stdin:
+        example: test input
+        type: string
+      time:
+        example: 2s
         type: string
     type: object
   models.Organization:
@@ -572,6 +708,447 @@ info:
   title: Unicorn API
   version: "1.0"
 paths:
+  /api/v1/buckets:
+    get:
+      description: List all storage buckets owned by the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.StorageBucket'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List buckets
+      tags:
+      - Storage
+    post:
+      consumes:
+      - application/json
+      description: Create a new storage bucket
+      parameters:
+      - description: Bucket name
+        in: body
+        name: bucket
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateBucketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.StorageBucket'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create bucket
+      tags:
+      - Storage
+  /api/v1/buckets/{bucket_id}/files:
+    get:
+      description: List all files in a storage bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.File'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List files
+      tags:
+      - Storage
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a file to a storage bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.File'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload file
+      tags:
+      - Storage
+  /api/v1/buckets/{bucket_id}/files/{file_id}:
+    delete:
+      description: Delete a file from a storage bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: File ID
+        in: path
+        name: file_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete file
+      tags:
+      - Storage
+    get:
+      description: Download a file from a storage bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: File ID
+        in: path
+        name: file_id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download file
+      tags:
+      - Storage
+  /api/v1/compute/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new compute container with the specified image and configuration
+      parameters:
+      - description: Compute container creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ComputeCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Container ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a compute container
+      tags:
+      - Compute
+  /api/v1/compute/list:
+    get:
+      consumes:
+      - application/json
+      description: List all compute containers owned by the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of containers
+          schema:
+            items:
+              $ref: '#/definitions/models.ComputeContainerInfo'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List compute containers
+      tags:
+      - Compute
+  /api/v1/debug/token:
+    get:
+      consumes:
+      - application/json
+      description: Returns a static API token with admin permissions for testing purposes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get a debug API token for testing
+      tags:
+      - IAM
+  /api/v1/lambda/execute:
+    post:
+      consumes:
+      - application/json
+      description: Execute code in a Lambda function with specified runtime and files
+      parameters:
+      - description: Lambda execution request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LambdaExecuteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LambdaExecuteResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Execute a Lambda function
+      tags:
+      - Lambda
+  /api/v1/lambda/test:
+    post:
+      consumes:
+      - application/json
+      description: Test a Lambda function with specified runtime and files
+      parameters:
+      - description: Lambda test request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LambdaExecuteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LambdaExecuteResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Test a Lambda function
+      tags:
+      - Lambda
   /api/v1/login:
     post:
       consumes:
@@ -783,6 +1360,185 @@ paths:
       summary: Assign a role to an account
       tags:
       - IAM
+  /api/v1/secrets:
+    get:
+      description: List all secrets for the authenticated user (does not return secret
+        values)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SecretResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List secrets
+      tags:
+      - Secrets Manager
+    post:
+      consumes:
+      - application/json
+      description: Create a new secret for the authenticated user
+      parameters:
+      - description: Secret details to create
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/models.SecretBodyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SecretResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create secret
+      tags:
+      - Secrets Manager
+  /api/v1/secrets/{id}:
+    delete:
+      description: Delete a secret for the authenticated user
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete secret
+      tags:
+      - Secrets Manager
+    get:
+      description: Get a secret and its decrypted value for the authenticated user
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get secret
+      tags:
+      - Secrets Manager
+    put:
+      consumes:
+      - application/json
+      description: Update the value and/or metadata for a secret
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Secret update
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSecretBody'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden - insufficient permissions
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update secret
+      tags:
+      - Secrets Manager
   /api/v1/token/refresh:
     post:
       consumes:
@@ -846,248 +1602,6 @@ paths:
       summary: Validate JWT token
       tags:
       - IAM
-  /buckets:
-    get:
-      description: List all storage buckets owned by the authenticated user
-      parameters:
-      - default: Bearer <token>
-        description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.StorageBucket'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: List buckets
-      tags:
-      - Storage
-    post:
-      consumes:
-      - application/json
-      description: Create a new storage bucket
-      parameters:
-      - default: Bearer <token>
-        description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Bucket name
-        in: body
-        name: bucket
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CreateBucketRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.StorageBucket'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Create bucket
-      tags:
-      - Storage
-  /buckets/{bucket_id}/files:
-    get:
-      description: List all files in a storage bucket
-      parameters:
-      - default: Bearer <token>
-        description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Bucket ID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.File'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: List files
-      tags:
-      - Storage
-    post:
-      consumes:
-      - multipart/form-data
-      description: Upload a file to a storage bucket
-      parameters:
-      - default: Bearer <token>
-        description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Bucket ID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      - description: File to upload
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.File'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Upload file
-      tags:
-      - Storage
-  /buckets/{bucket_id}/files/{file_id}:
-    delete:
-      description: Delete a file from a storage bucket
-      parameters:
-      - default: Bearer <token>
-        description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Bucket ID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      - description: File ID
-        in: path
-        name: file_id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Delete file
-      tags:
-      - Storage
-    get:
-      description: Download a file from a storage bucket
-      parameters:
-      - default: Bearer <token>
-        description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Bucket ID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      - description: File ID
-        in: path
-        name: file_id
-        required: true
-        type: string
-      produces:
-      - application/octet-stream
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: file
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Download file
-      tags:
-      - Storage
   /health:
     get:
       description: Get the health status of the API. This endpoint can be used by
@@ -1106,155 +1620,6 @@ paths:
       summary: Health check
       tags:
       - health
-  /secrets:
-    get:
-      description: List all secrets for the authenticated user (does not return secret
-        values)
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.SecretResponse'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: List secrets
-      tags:
-      - Secrets Manager
-    post:
-      consumes:
-      - application/json
-      description: Create a new secret for the authenticated user
-      parameters:
-      - description: Secret details to create
-        in: body
-        name: secret
-        required: true
-        schema:
-          $ref: '#/definitions/models.SecretBodyRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.SecretResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Create secret
-      tags:
-      - Secrets Manager
-  /secrets/{id}:
-    delete:
-      description: Delete a secret for the authenticated user
-      parameters:
-      - description: Secret ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Delete secret
-      tags:
-      - Secrets Manager
-    get:
-      description: Get a secret and its decrypted value for the authenticated user
-      parameters:
-      - description: Secret ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Get secret
-      tags:
-      - Secrets Manager
-    put:
-      consumes:
-      - application/json
-      description: Update the value and/or metadata for a secret
-      parameters:
-      - description: Secret ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Secret update
-        in: body
-        name: secret
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpdateSecretBody'
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Update secret
-      tags:
-      - Secrets Manager
 securityDefinitions:
   BearerAuth:
     description: 'Type "Bearer" followed by a space and JWT token. Example: "Bearer

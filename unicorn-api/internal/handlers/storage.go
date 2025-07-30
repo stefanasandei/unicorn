@@ -76,10 +76,11 @@ type CreateBucketRequest struct {
 // @Description List all storage buckets owned by the authenticated user
 // @Tags Storage
 // @Produce json
-// @Param Authorization header string true "Bearer token" default(Bearer <token>)
+// @Security BearerAuth
 // @Success 200 {array} models.StorageBucket
 // @Failure 401 {object} ErrorResponse
-// @Router /buckets [get]
+// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
+// @Router /api/v1/buckets [get]
 func (h *StorageHandler) ListBucketsHandler(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
@@ -105,13 +106,13 @@ func (h *StorageHandler) ListBucketsHandler(c *gin.Context) {
 // @Tags Storage
 // @Accept json
 // @Produce json
-// @Param Authorization header string true "Bearer token" default(Bearer <token>)
+// @Security BearerAuth
 // @Param bucket body CreateBucketRequest true "Bucket name"
 // @Success 201 {object} models.StorageBucket
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
-// @Router /buckets [post]
+// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
+// @Router /api/v1/buckets [post]
 func (h *StorageHandler) CreateBucketHandler(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
@@ -161,15 +162,16 @@ func (h *StorageHandler) CreateBucketHandler(c *gin.Context) {
 // @Tags Storage
 // @Accept multipart/form-data
 // @Produce json
-// @Param Authorization header string true "Bearer token" default(Bearer <token>)
+// @Security BearerAuth
 // @Param bucket_id path string true "Bucket ID"
 // @Param file formData file true "File to upload"
 // @Success 201 {object} models.File
 // @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /buckets/{bucket_id}/files [post]
+// @Router /api/v1/buckets/{bucket_id}/files [post]
 func (h *StorageHandler) UploadFileHandler(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
@@ -247,15 +249,16 @@ func (h *StorageHandler) UploadFileHandler(c *gin.Context) {
 // @Description Download a file from a storage bucket
 // @Tags Storage
 // @Produce octet-stream
-// @Param Authorization header string true "Bearer token" default(Bearer <token>)
+// @Security BearerAuth
 // @Param bucket_id path string true "Bucket ID"
 // @Param file_id path string true "File ID"
 // @Success 200 {file} file
 // @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /buckets/{bucket_id}/files/{file_id} [get]
+// @Router /api/v1/buckets/{bucket_id}/files/{file_id} [get]
 func (h *StorageHandler) DownloadFileHandler(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
@@ -320,14 +323,15 @@ func (h *StorageHandler) DownloadFileHandler(c *gin.Context) {
 // @Description List all files in a storage bucket
 // @Tags Storage
 // @Produce json
-// @Param Authorization header string true "Bearer token" default(Bearer <token>)
+// @Security BearerAuth
 // @Param bucket_id path string true "Bucket ID"
 // @Success 200 {array} models.File
 // @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /buckets/{bucket_id}/files [get]
+// @Router /api/v1/buckets/{bucket_id}/files [get]
 func (h *StorageHandler) ListFilesHandler(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
@@ -384,15 +388,16 @@ func (h *StorageHandler) ListFilesHandler(c *gin.Context) {
 // @Summary Delete file
 // @Description Delete a file from a storage bucket
 // @Tags Storage
-// @Param Authorization header string true "Bearer token" default(Bearer <token>)
+// @Security BearerAuth
 // @Param bucket_id path string true "Bucket ID"
 // @Param file_id path string true "File ID"
 // @Success 204 {object} nil
 // @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /buckets/{bucket_id}/files/{file_id} [delete]
+// @Router /api/v1/buckets/{bucket_id}/files/{file_id} [delete]
 func (h *StorageHandler) DeleteFileHandler(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {

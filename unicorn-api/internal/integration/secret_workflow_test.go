@@ -9,6 +9,7 @@ import (
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
 	"unicorn-api/internal/handlers"
+	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 
 	"github.com/gin-gonic/gin"
@@ -18,12 +19,33 @@ import (
 
 func setupTestSecretsHandler(t *testing.T) (*handlers.SecretsHandler, *gin.Engine, uuid.UUID, string) {
 	cfg := config.New()
-	store, err := stores.NewSecretStore(":memory:")
+	secretStore, err := stores.NewSecretStore(":memory:")
 	require.NoError(t, err)
+
+	// Create a mock IAM store
+	iamStore, err := stores.NewGORMIAMStore(":memory:")
+	require.NoError(t, err)
+
+	// Create an admin role with all permissions
+	role := &models.Role{
+		ID:          uuid.New(),
+		Name:        "admin",
+		Permissions: models.Permissions{models.Read, models.Write, models.Delete},
+	}
+	err = iamStore.CreateRole(role)
+	require.NoError(t, err)
+
+	// Create a test user with the admin role
 	userID := uuid.New()
-	token, err := auth.GenerateToken(userID.String(), "role", cfg)
+	token, err := auth.GenerateToken(userID.String(), role.ID.String(), cfg)
 	require.NoError(t, err)
-	h := &handlers.SecretsHandler{Store: store, Config: cfg}
+
+	h := &handlers.SecretsHandler{
+		Store:    secretStore,
+		Config:   cfg,
+		IAMStore: iamStore,
+	}
+
 	r := gin.Default()
 	r.GET("/secrets", h.ListSecrets)
 	r.POST("/secrets", h.CreateSecret)

@@ -29,7 +29,20 @@ func NewComputeHandler(cfg *config.Config, iamStore stores.IAMStore) *ComputeHan
 	return &ComputeHandler{Config: cfg, IAMStore: iamStore}
 }
 
-// POST /compute/create
+// CreateCompute godoc
+// @Summary Create a compute container
+// @Description Create a new compute container with the specified image and configuration
+// @Tags Compute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body models.ComputeCreateRequest true "Compute container creation request"
+// @Success 200 {object} map[string]string "Container ID"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - insufficient permissions"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/compute/create [post]
 func (h *ComputeHandler) CreateCompute(c *gin.Context) {
 	var req models.ComputeCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -77,6 +90,19 @@ func (h *ComputeHandler) CreateCompute(c *gin.Context) {
 	exposedPorts := natPortSet(req.Ports)
 	portBindings := natPortBindings(req.Ports)
 
+	// Ensure the exposed port is included in the ports map
+	if req.ExposePort != "" {
+		if _, exists := req.Ports[req.ExposePort]; !exists {
+			// If the exposed port is not in the ports map, add it with a random host port
+			hostPort := fmt.Sprintf("%d", 10000+rand.Intn(10000))
+			req.Ports[req.ExposePort] = hostPort
+
+			// Update port bindings
+			exposedPorts = natPortSet(req.Ports)
+			portBindings = natPortBindings(req.Ports)
+		}
+	}
+
 	containerName := "compute-" + claims.AccountID + "-" + randString(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:        req.Image,
@@ -99,7 +125,18 @@ func (h *ComputeHandler) CreateCompute(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": resp.ID})
 }
 
-// GET /compute/list
+// ListCompute godoc
+// @Summary List compute containers
+// @Description List all compute containers owned by the authenticated user
+// @Tags Compute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.ComputeContainerInfo "List of containers"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - insufficient permissions"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/compute/list [get]
 func (h *ComputeHandler) ListCompute(c *gin.Context) {
 	claims, err := h.getClaims(c)
 	if err != nil {

@@ -98,7 +98,7 @@ func (s *SecretStore) CreateSecret(userID uuid.UUID, name, value, metadata strin
 		Name:           name,
 		EncryptedValue: encrypted,
 		UserID:         userID,
-		Metadata:       metadata,
+		MetadataRaw:    metadata,
 	}
 	if err := s.db.Create(secret).Error; err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (s *SecretStore) ListSecrets(userID uuid.UUID) ([]models.SecretResponse, er
 			CreatedAt: s.CreatedAt,
 			UpdatedAt: s.UpdatedAt,
 			UserID:    s.UserID,
-			Metadata:  s.Metadata,
+			Metadata:  s.MetadataRaw,
 		}
 	}
 	return resp, nil
@@ -155,7 +155,7 @@ func (s *SecretStore) UpdateSecret(userID, secretID uuid.UUID, newValue, newMeta
 		secret.EncryptedValue = encrypted
 	}
 	if newMetadata != "" {
-		secret.Metadata = newMetadata
+		secret.MetadataRaw = newMetadata
 	}
 	secret.UpdatedAt = time.Now()
 	return s.db.Save(&secret).Error

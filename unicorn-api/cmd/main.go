@@ -43,13 +43,13 @@ var (
 	BuildTime = "unknown"
 )
 
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler) {
 	// setup the stores
 	store, err := stores.NewGORMIAMStore("test.db")
 	if err != nil {
 		panic("failed to initialize IAM store: " + err.Error())
 	}
-	if err := store.SeedAdmin(); err != nil {
+	if err := store.SeedAdmin(cfg); err != nil {
 		panic("failed to seed admin: " + err.Error())
 	}
 
@@ -62,11 +62,18 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
 		panic("failed to initialize storage store: " + err.Error())
 	}
 
+	secretsStore, err := stores.NewSecretStore("test.db")
+	if err != nil {
+		panic("failed to initialize secrets store: " + err.Error())
+	}
+
 	iamHandler := handlers.NewIAMHandler(store, cfg)
+	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
 	storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
 	computeHandler := handlers.NewComputeHandler(cfg, store)
+	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
 
-	return iamHandler, storageHandler, computeHandler
+	return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler
 }
 
 func main() {
@@ -94,11 +101,11 @@ func main() {
 	router.Use(middleware.CORS())
 
 	// setup services
-	iamHandler, storageHandler, computeHandler := setupServices(cfg)
+	iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler := setupServices(cfg)
 
 	// Setup routes
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler)
 	router.GET("/health", handlers.HealthCheck)
 
 	// Get port from environment or use default
