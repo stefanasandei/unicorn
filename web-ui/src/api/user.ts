@@ -64,6 +64,7 @@ export async function getAccountInfo(token: string) {
   const rolesRes = await axios.get(`${API_BASE}/roles`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  console.log(rolesRes.data);
   const roles = rolesRes.data.roles as Role[];
   const role = roles.find((r) => r.id === role_id);
 
@@ -79,5 +80,10 @@ export async function getAccountInfo(token: string) {
   }[];
   const user = users.find((u) => u.id === account_id);
 
-  return { roleName: role?.name, orgName, userName: user?.name };
+  return {
+    roleName: role?.name,
+    permissions: role?.permissions,
+    orgName,
+    userName: user?.name,
+  };
 }
