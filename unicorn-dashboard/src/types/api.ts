@@ -65,18 +65,18 @@ export interface Secret {
   created_at: string;
   updated_at: string;
   user_id: string;
-  metadata?: Record<string, any>;
+  metadata?: string;
 }
 
 export interface SecretCreateRequest {
   name: string;
   value: string;
-  metadata?: Record<string, any>;
+  metadata?: string;
 }
 
 export interface SecretUpdateRequest {
   value?: string;
-  metadata?: Record<string, any>;
+  metadata?: string;
 }
 
 export interface StorageBucket {

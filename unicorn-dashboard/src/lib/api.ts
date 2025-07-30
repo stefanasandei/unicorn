@@ -131,7 +131,24 @@ class ApiClient {
 
   async getSecret(id: string): Promise<Secret & { value: string }> {
     const response = await this.client.get(`/api/v1/secrets/${id}`);
-    return response.data;
+    const data = response.data;
+    
+    // Handle inconsistent metadata response from API
+    // ReadSecret returns metadata as map, but ListSecrets returns it as string
+    let metadata: string | undefined;
+    if (data.metadata) {
+      if (typeof data.metadata === 'string') {
+        metadata = data.metadata;
+      } else {
+        // Convert map to JSON string
+        metadata = JSON.stringify(data.metadata);
+      }
+    }
+    
+    return {
+      ...data,
+      metadata,
+    };
   }
 
   async updateSecret(id: string, data: SecretUpdateRequest): Promise<void> {
