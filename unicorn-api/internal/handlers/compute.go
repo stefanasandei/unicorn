@@ -142,3 +142,50 @@ func (h *ComputeHandler) ListCompute(c *gin.Context) {
 
 	c.JSON(http.StatusOK, containers)
 }
+
+// DeleteCompute godoc
+// @Summary Delete a compute container
+// @Description Delete a compute container by ID
+// @Tags Compute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Container ID"
+// @Success 204 {string} string "Container deleted successfully"
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
+// @Router /api/v1/compute/{id} [delete]
+func (h *ComputeHandler) DeleteCompute(c *gin.Context) {
+	claims, err := h.getClaims(c)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	if !h.hasPermission(claims, "compute", 2) {
+		errors.RespondWithPermissionError(c, "delete compute containers")
+		return
+	}
+
+	containerID := c.Param("id")
+	if containerID == "" {
+		errors.RespondWithError(c, errors.ErrBadRequest.WithDetails("Container ID is required"))
+		return
+	}
+
+	userID, err := uuid.Parse(claims.AccountID)
+	if err != nil {
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
+		return
+	}
+
+	if err := h.service.DeleteContainer(userID, containerID); err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

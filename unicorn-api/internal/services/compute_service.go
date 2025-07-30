@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"time"
 
 	"unicorn-api/internal/common/errors"
@@ -37,6 +38,17 @@ func (s *ComputeService) CreateContainer(userID uuid.UUID, req models.ComputeCre
 		return nil, err
 	}
 
+	// Set defaults if not provided
+	if req.Preset == "" {
+		req.Preset = models.PresetMicro
+	}
+	if req.Ports == nil {
+		req.Ports = make(map[string]string)
+	}
+	if req.ExposePort == "" {
+		req.ExposePort = "80"
+	}
+
 	// Validate ports
 	for port := range req.Ports {
 		if err := s.validator.ValidatePort(port); err != nil {
@@ -44,8 +56,18 @@ func (s *ComputeService) CreateContainer(userID uuid.UUID, req models.ComputeCre
 		}
 	}
 
-	// Create Docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	// Create Docker client with proper socket path for macOS
+	var cli *client.Client
+	var err error
+	if runtime.GOOS == "darwin" {
+		// On macOS, Docker Desktop uses a different socket path
+		cli, err = client.NewClientWithOpts(
+			client.WithHost("unix:///Users/asandeistefan/.docker/run/docker.sock"),
+			client.WithAPIVersionNegotiation(),
+		)
+	} else {
+		cli, err = client.NewClientWithOpts(client.FromEnv)
+	}
 	if err != nil {
 		return nil, errors.ErrInternalError.WithDetails("Docker client unavailable: " + err.Error())
 	}
@@ -75,12 +97,23 @@ func (s *ComputeService) CreateContainer(userID uuid.UUID, req models.ComputeCre
 		}
 	}
 
+	// Set environment variables
+	envVars := []string{}
+	for key, value := range req.Environment {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
+	}
+
 	// Generate container name
-	containerName := fmt.Sprintf("compute-%s-%s", userID.String()[:8], s.randString(8))
+	containerName := req.Name
+	if containerName == "" {
+		containerName = fmt.Sprintf("compute-%s-%s", userID.String()[:8], s.randString(8))
+	}
 
 	// Create container
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:        req.Image,
+		Cmd:          req.Command,
+		Env:          envVars,
 		ExposedPorts: exposedPorts,
 		Labels:       map[string]string{"owner": userID.String()},
 	}, &container.HostConfig{
@@ -110,17 +143,31 @@ func (s *ComputeService) CreateContainer(userID uuid.UUID, req models.ComputeCre
 		}
 	}
 
+	now := time.Now().Format(time.RFC3339)
 	return &models.ComputeContainerInfo{
-		ID:     resp.ID,
-		Image:  req.Image,
-		Status: containerInfo.State.Status,
-		Ports:  ports,
+		ID:        resp.ID,
+		Name:      containerName,
+		Image:     req.Image,
+		Status:    containerInfo.State.Status,
+		Ports:     ports,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}, nil
 }
 
 // ListContainers lists all containers for a user
 func (s *ComputeService) ListContainers(userID uuid.UUID) ([]models.ComputeContainerInfo, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	var cli *client.Client
+	var err error
+	if runtime.GOOS == "darwin" {
+		// On macOS, Docker Desktop uses a different socket path
+		cli, err = client.NewClientWithOpts(
+			client.WithHost("unix:///Users/asandeistefan/.docker/run/docker.sock"),
+			client.WithAPIVersionNegotiation(),
+		)
+	} else {
+		cli, err = client.NewClientWithOpts(client.FromEnv)
+	}
 	if err != nil {
 		return nil, errors.ErrInternalError.WithDetails("Docker client unavailable: " + err.Error())
 	}
@@ -147,15 +194,65 @@ func (s *ComputeService) ListContainers(userID uuid.UUID) ([]models.ComputeConta
 			}
 		}
 
+		now := time.Now().Format(time.RFC3339)
 		result = append(result, models.ComputeContainerInfo{
-			ID:     ctr.ID,
-			Image:  ctr.Image,
-			Status: ctr.Status,
-			Ports:  ports,
+			ID:        ctr.ID,
+			Name:      ctr.Names[0][1:], // Remove leading slash
+			Image:     ctr.Image,
+			Status:    ctr.Status,
+			Ports:     ports,
+			CreatedAt: now,
+			UpdatedAt: now,
 		})
 	}
 
 	return result, nil
+}
+
+// DeleteContainer deletes a Docker container
+func (s *ComputeService) DeleteContainer(userID uuid.UUID, containerID string) error {
+	var cli *client.Client
+	var err error
+	if runtime.GOOS == "darwin" {
+		// On macOS, Docker Desktop uses a different socket path
+		cli, err = client.NewClientWithOpts(
+			client.WithHost("unix:///Users/asandeistefan/.docker/run/docker.sock"),
+			client.WithAPIVersionNegotiation(),
+		)
+	} else {
+		cli, err = client.NewClientWithOpts(client.FromEnv)
+	}
+	if err != nil {
+		return errors.ErrInternalError.WithDetails("Docker client unavailable: " + err.Error())
+	}
+	defer cli.Close()
+
+	ctx := context.Background()
+
+	// Verify the container belongs to the user
+	containerInfo, err := cli.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return errors.ErrNotFound.WithDetails("Container not found")
+	}
+
+	// Check if container belongs to user
+	if containerInfo.Config.Labels["owner"] != userID.String() {
+		return errors.ErrForbidden.WithDetails("Container does not belong to user")
+	}
+
+	// Stop the container if it's running
+	if containerInfo.State.Running {
+		if err := cli.ContainerStop(ctx, containerID, container.StopOptions{}); err != nil {
+			return errors.ErrInternalError.WithDetails("Failed to stop container: " + err.Error())
+		}
+	}
+
+	// Remove the container
+	if err := cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
+		return errors.ErrInternalError.WithDetails("Failed to remove container: " + err.Error())
+	}
+
+	return nil
 }
 
 // pullImageWithRetry pulls a Docker image with retry logic

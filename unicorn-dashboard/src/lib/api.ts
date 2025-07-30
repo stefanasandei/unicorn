@@ -225,6 +225,10 @@ class ApiClient {
     return response.data;
   }
 
+  async deleteCompute(id: string): Promise<void> {
+    await this.client.delete(`/api/v1/compute/${id}`);
+  }
+
   // Lambda endpoints
   async executeLambda(
     data: LambdaExecuteRequest

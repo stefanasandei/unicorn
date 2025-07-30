@@ -108,17 +108,19 @@ export interface ComputeContainerInfo {
   name: string;
   image: string;
   status: string;
+  ports?: Record<string, string>;
   created_at: string;
   updated_at: string;
 }
 
 export interface ComputeCreateRequest {
-  name: string;
+  name?: string;
   image: string;
   command?: string[];
   environment?: Record<string, string>;
+  preset?: string;
   ports?: Record<string, string>;
-  volumes?: Record<string, string>;
+  expose_port?: string;
 }
 
 export interface ProcessInfo {

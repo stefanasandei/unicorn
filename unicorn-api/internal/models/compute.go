@@ -11,21 +11,24 @@ const (
 )
 
 // ComputeCreateRequest is the request body for creating a compute container
-// Ports is a map of containerPort:hostPort
-// ExposePort is the container port to expose
-
 type ComputeCreateRequest struct {
-	Image      string            `json:"image" binding:"required"`
-	Preset     ComputePreset     `json:"preset" binding:"required,oneof=micro small"`
-	Ports      map[string]string `json:"ports" binding:"required"`
-	ExposePort string            `json:"expose_port" binding:"required"`
+	Name        string            `json:"name,omitempty"`
+	Image       string            `json:"image" binding:"required"`
+	Command     []string          `json:"command,omitempty"`
+	Environment map[string]string `json:"environment,omitempty"`
+	Preset      ComputePreset     `json:"preset,omitempty"`
+	Ports       map[string]string `json:"ports,omitempty"`
+	ExposePort  string            `json:"expose_port,omitempty"`
 }
 
 // ComputeContainerInfo holds info about a running container
 
 type ComputeContainerInfo struct {
-	ID     string            `json:"id"`
-	Image  string            `json:"image"`
-	Status string            `json:"status"`
-	Ports  map[string]string `json:"ports"`
+	ID        string            `json:"id"`
+	Name      string            `json:"name"`
+	Image     string            `json:"image"`
+	Status    string            `json:"status"`
+	Ports     map[string]string `json:"ports"`
+	CreatedAt string            `json:"created_at"`
+	UpdatedAt string            `json:"updated_at"`
 }

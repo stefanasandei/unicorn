@@ -53,6 +53,7 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
 			// Compute routes
 			protected.POST("/compute/create", computeHandler.CreateCompute)
 			protected.GET("/compute/list", computeHandler.ListCompute)
+			protected.DELETE("/compute/:id", computeHandler.DeleteCompute)
 
 			// Lambda routes
 			protected.POST("/lambda/execute", lambdaHandler.ExecuteLambda)

@@ -498,6 +498,73 @@
                 }
             }
         },
+        "/api/v1/compute/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a compute container by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compute"
+                ],
+                "summary": "Delete a compute container",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Container ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Container deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/debug/token": {
             "get": {
                 "description": "Returns a static API token with admin permissions for testing purposes",
@@ -1853,10 +1920,16 @@
         "models.ComputeContainerInfo": {
             "type": "object",
             "properties": {
+                "created_at": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "image": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "ports": {
@@ -1867,22 +1940,37 @@
                 },
                 "status": {
                     "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
         "models.ComputeCreateRequest": {
             "type": "object",
             "required": [
-                "expose_port",
-                "image",
-                "ports",
-                "preset"
+                "image"
             ],
             "properties": {
+                "command": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "environment": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "expose_port": {
                     "type": "string"
                 },
                 "image": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "ports": {
@@ -1892,15 +1980,7 @@
                     }
                 },
                 "preset": {
-                    "enum": [
-                        "micro",
-                        "small"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.ComputePreset"
-                        }
-                    ]
+                    "$ref": "#/definitions/models.ComputePreset"
                 }
             }
         },

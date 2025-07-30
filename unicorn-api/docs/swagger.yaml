@@ -406,9 +406,13 @@ definitions:
     - AccountTypeBot
   models.ComputeContainerInfo:
     properties:
+      created_at:
+        type: string
       id:
         type: string
       image:
+        type: string
+      name:
         type: string
       ports:
         additionalProperties:
@@ -416,28 +420,33 @@ definitions:
         type: object
       status:
         type: string
+      updated_at:
+        type: string
     type: object
   models.ComputeCreateRequest:
     properties:
+      command:
+        items:
+          type: string
+        type: array
+      environment:
+        additionalProperties:
+          type: string
+        type: object
       expose_port:
         type: string
       image:
+        type: string
+      name:
         type: string
       ports:
         additionalProperties:
           type: string
         type: object
       preset:
-        allOf:
-        - $ref: '#/definitions/models.ComputePreset'
-        enum:
-        - micro
-        - small
+        $ref: '#/definitions/models.ComputePreset'
     required:
-    - expose_port
     - image
-    - ports
-    - preset
     type: object
   models.ComputePreset:
     enum:
@@ -958,6 +967,49 @@ paths:
       summary: Download file
       tags:
       - Storage
+  /api/v1/compute/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a compute container by ID
+      parameters:
+      - description: Container ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Container deleted successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Delete a compute container
+      tags:
+      - Compute
   /api/v1/compute/create:
     post:
       consumes:

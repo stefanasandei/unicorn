@@ -1,43 +1,60 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Server, Plus, Play, Square, Activity } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { ComputeContainerInfo, ComputeCreateRequest } from '@/types/api';
+import React, { useEffect, useState } from "react";
+import { Layout } from "@/components/Layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Server,
+  Plus,
+  Play,
+  Square,
+  Activity,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { apiClient } from "@/lib/api";
+import { ComputeContainerInfo, ComputeCreateRequest } from "@/types/api";
 
 export default function ComputePage() {
   const [containers, setContainers] = useState<ComputeContainerInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
 
   // Form states
-  const [newContainerName, setNewContainerName] = useState('');
-  const [newContainerImage, setNewContainerImage] = useState('');
-  const [newContainerCommand, setNewContainerCommand] = useState('');
-  const [newContainerEnvironment, setNewContainerEnvironment] = useState('');
+  const [newContainerName, setNewContainerName] = useState("");
+  const [newContainerImage, setNewContainerImage] = useState("");
+  const [newContainerCommand, setNewContainerCommand] = useState("");
+  const [newContainerEnvironment, setNewContainerEnvironment] = useState("");
+  const [newContainerPort, setNewContainerPort] = useState("80");
+  const [newContainerHostPort, setNewContainerHostPort] = useState("8080");
 
   useEffect(() => {
     fetchContainers();
@@ -46,64 +63,124 @@ export default function ComputePage() {
   const fetchContainers = async () => {
     try {
       setIsLoading(true);
+      setError(""); // Clear any previous errors
       const containersData = await apiClient.listCompute();
       setContainers(containersData);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch containers');
+    } catch (err: unknown) {
+      console.error("Container fetch error:", err);
+      const error = err as {
+        response?: { data?: { error?: string; details?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        "Failed to fetch containers";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCreateContainer = async () => {
-    if (!newContainerName.trim() || !newContainerImage.trim()) {
-      setError('Name and image are required');
+    if (!newContainerImage.trim()) {
+      setError("Image is required");
       return;
     }
 
     try {
+      setIsCreating(true);
+      setError("");
+
       let environment = {};
       if (newContainerEnvironment.trim()) {
         try {
           environment = JSON.parse(newContainerEnvironment);
         } catch {
-          setError('Invalid JSON environment');
+          setError("Invalid JSON environment");
           return;
         }
       }
 
+      // Use user-defined ports
+      const exposePort = newContainerPort;
+      const ports: Record<string, string> = {};
+      ports[exposePort] = newContainerHostPort;
+
       const request: ComputeCreateRequest = {
-        name: newContainerName,
+        name: newContainerName.trim() || undefined,
         image: newContainerImage,
         environment,
+        preset: "micro", // Default to micro preset
+        expose_port: exposePort,
+        ports,
       };
 
       if (newContainerCommand.trim()) {
-        request.command = newContainerCommand.split(' ');
+        request.command = newContainerCommand.split(" ");
       }
 
       await apiClient.createCompute(request);
-      
-      setNewContainerName('');
-      setNewContainerImage('');
-      setNewContainerCommand('');
-      setNewContainerEnvironment('');
+
+      setNewContainerName("");
+      setNewContainerImage("");
+      setNewContainerCommand("");
+      setNewContainerEnvironment("");
+      setNewContainerPort("80");
+      setNewContainerHostPort("8080");
+      setError(""); // Clear any previous errors
       fetchContainers();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create container');
+    } catch (err: unknown) {
+      console.error("Container creation error:", err);
+      const error = err as {
+        response?: { data?: { error?: string; details?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        "Failed to create container";
+      setError(errorMessage);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDeleteContainer = async (containerId: string) => {
+    if (!confirm("Are you sure you want to delete this container?")) {
+      return;
+    }
+
+    try {
+      await apiClient.deleteCompute(containerId);
+      fetchContainers(); // Refresh the list
+    } catch (err: unknown) {
+      console.error("Container deletion error:", err);
+      const error = err as {
+        response?: { data?: { error?: string; details?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        "Failed to delete container";
+      setError(errorMessage);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'running':
-        return 'bg-green-100 text-green-800';
-      case 'stopped':
-        return 'bg-red-100 text-red-800';
-      case 'starting':
-        return 'bg-yellow-100 text-yellow-800';
+      case "running":
+        return "bg-green-100 text-green-800";
+      case "stopped":
+        return "bg-red-100 text-red-800";
+      case "starting":
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -142,63 +219,118 @@ export default function ComputePage() {
                   Deploy and manage compute containers
                 </CardDescription>
               </div>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Deploy Container
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Deploy New Container</DialogTitle>
-                    <DialogDescription>
-                      Deploy a new compute container
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="container-name">Container Name</Label>
-                      <Input
-                        id="container-name"
-                        value={newContainerName}
-                        onChange={(e) => setNewContainerName(e.target.value)}
-                        placeholder="Enter container name"
-                      />
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={fetchContainers}
+                  disabled={isLoading}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${
+                      isLoading ? "animate-spin" : ""
+                    }`}
+                  />
+                  Refresh
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Deploy Container
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Deploy New Container</DialogTitle>
+                      <DialogDescription>
+                        Deploy a new compute container
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="container-name">
+                          Container Name (optional)
+                        </Label>
+                        <Input
+                          id="container-name"
+                          value={newContainerName}
+                          onChange={(e) => setNewContainerName(e.target.value)}
+                          placeholder="Auto-generated if not provided"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="container-image">Docker Image</Label>
+                        <Input
+                          id="container-image"
+                          value={newContainerImage}
+                          onChange={(e) => setNewContainerImage(e.target.value)}
+                          placeholder="e.g., nginx:latest"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="container-command">
+                          Command (optional)
+                        </Label>
+                        <Input
+                          id="container-command"
+                          value={newContainerCommand}
+                          onChange={(e) =>
+                            setNewContainerCommand(e.target.value)
+                          }
+                          placeholder="e.g., nginx -g 'daemon off;'"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="container-environment">
+                          Environment Variables (JSON)
+                        </Label>
+                        <Input
+                          id="container-environment"
+                          value={newContainerEnvironment}
+                          onChange={(e) =>
+                            setNewContainerEnvironment(e.target.value)
+                          }
+                          placeholder='{"NODE_ENV": "production"}'
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="container-port">Container Port</Label>
+                          <Input
+                            id="container-port"
+                            type="number"
+                            value={newContainerPort}
+                            onChange={(e) =>
+                              setNewContainerPort(e.target.value)
+                            }
+                            placeholder="80"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="container-host-port">Host Port</Label>
+                          <Input
+                            id="container-host-port"
+                            type="number"
+                            value={newContainerHostPort}
+                            onChange={(e) =>
+                              setNewContainerHostPort(e.target.value)
+                            }
+                            placeholder="8080"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="container-image">Docker Image</Label>
-                      <Input
-                        id="container-image"
-                        value={newContainerImage}
-                        onChange={(e) => setNewContainerImage(e.target.value)}
-                        placeholder="e.g., nginx:latest"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="container-command">Command (optional)</Label>
-                      <Input
-                        id="container-command"
-                        value={newContainerCommand}
-                        onChange={(e) => setNewContainerCommand(e.target.value)}
-                        placeholder="e.g., nginx -g 'daemon off;'"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="container-environment">Environment Variables (JSON)</Label>
-                      <Input
-                        id="container-environment"
-                        value={newContainerEnvironment}
-                        onChange={(e) => setNewContainerEnvironment(e.target.value)}
-                        placeholder='{"NODE_ENV": "production"}'
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleCreateContainer}>Deploy Container</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    <DialogFooter>
+                      <Button
+                        onClick={handleCreateContainer}
+                        disabled={isCreating}
+                      >
+                        {isCreating ? "Creating..." : "Deploy Container"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -213,35 +345,46 @@ export default function ComputePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {containers.map((container) => (
-                  <TableRow key={container.id}>
-                    <TableCell className="font-medium">{container.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{container.image}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(container.status)}>
-                        {container.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(container.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Play className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Square className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Activity className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {containers &&
+                  containers.map((container) => (
+                    <TableRow key={container.id}>
+                      <TableCell className="font-medium">
+                        {container.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{container.image}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(container.status)}>
+                          {container.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(container.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm">
+                            <Play className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Square className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Activity className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteContainer(container.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </CardContent>
@@ -257,7 +400,13 @@ export default function ComputePage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  setNewContainerImage("nginx:latest");
+                  setNewContainerName("web-server");
+                }}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-lg bg-blue-500">
@@ -273,7 +422,13 @@ export default function ComputePage() {
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  setNewContainerImage("postgres:13");
+                  setNewContainerName("database");
+                }}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-lg bg-green-500">
@@ -289,7 +444,13 @@ export default function ComputePage() {
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  setNewContainerImage("redis:alpine");
+                  setNewContainerName("cache");
+                }}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-lg bg-purple-500">
@@ -310,4 +471,4 @@ export default function ComputePage() {
       </div>
     </Layout>
   );
-} 
+}
