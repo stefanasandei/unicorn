@@ -6,7 +6,7 @@ services:
       dockerfile: ./entry/Dockerfile
       context: ./
     ports:
-      - "3000:3000"
+      - "6900:3000"
     environment:
       - SERVER_ADDR=0.0.0.0:3000
       - REDIS_ADDR=redis:6379

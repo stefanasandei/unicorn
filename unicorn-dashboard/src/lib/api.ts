@@ -9,7 +9,7 @@ import {
   SecretCreateRequest,
   SecretUpdateRequest,
   StorageBucket,
-  File,
+  StorageFile,
   ComputeContainerInfo,
   ComputeCreateRequest,
   LambdaExecuteRequest,
@@ -17,6 +17,8 @@ import {
   Role,
   Organization,
   ApiError,
+  ExecutionRequest,
+  ResponseTask,
 } from "@/types/api";
 
 class ApiClient {
@@ -71,7 +73,10 @@ class ApiClient {
     return response.data;
   }
 
-  async validateToken(token: string): Promise<{ valid: boolean; claims: any }> {
+  async validateToken(token: string): Promise<{
+    valid: boolean;
+    claims: { account_id: string; role_id: string; exp: number };
+  }> {
     const response = await this.client.get(
       `/api/v1/token/validate?token=${token}`
     );
@@ -96,7 +101,10 @@ class ApiClient {
   async createUser(
     orgId: string,
     data: CreateUserRequest
-  ): Promise<{ account: any; message: string }> {
+  ): Promise<{
+    account: { id: string; name: string; email: string };
+    message: string;
+  }> {
     const response = await this.client.post(
       `/api/v1/organizations/${orgId}/users`,
       data
@@ -112,7 +120,7 @@ class ApiClient {
 
   async getOrganizations(): Promise<{
     organization_name: string;
-    users: any[];
+    users: Array<{ id: string; name: string; email: string }>;
   }> {
     const response = await this.client.get("/api/v1/organizations");
     return response.data;
@@ -132,19 +140,19 @@ class ApiClient {
   async getSecret(id: string): Promise<Secret & { value: string }> {
     const response = await this.client.get(`/api/v1/secrets/${id}`);
     const data = response.data;
-    
+
     // Handle inconsistent metadata response from API
     // ReadSecret returns metadata as map, but ListSecrets returns it as string
     let metadata: string | undefined;
     if (data.metadata) {
-      if (typeof data.metadata === 'string') {
+      if (typeof data.metadata === "string") {
         metadata = data.metadata;
       } else {
         // Convert map to JSON string
         metadata = JSON.stringify(data.metadata);
       }
     }
-    
+
     return {
       ...data,
       metadata,
@@ -170,12 +178,12 @@ class ApiClient {
     return response.data;
   }
 
-  async listFiles(bucketId: string): Promise<File[]> {
+  async listFiles(bucketId: string): Promise<StorageFile[]> {
     const response = await this.client.get(`/api/v1/buckets/${bucketId}/files`);
     return response.data;
   }
 
-  async uploadFile(bucketId: string, file: File): Promise<File> {
+  async uploadFile(bucketId: string, file: File): Promise<StorageFile> {
     const formData = new FormData();
     formData.append("file", file);
     const response = await this.client.post(
@@ -228,6 +236,18 @@ class ApiClient {
   async testLambda(data: LambdaExecuteRequest): Promise<LambdaExecuteResponse> {
     const response = await this.client.post("/api/v1/lambda/test", data);
     return response.data;
+  }
+
+  // Execution endpoints (sandbox microservice)
+  async executeCode(data: ExecutionRequest): Promise<ResponseTask> {
+    const response = await this.client.post("/api/v1/lambda/execute", data);
+    return response.data;
+  }
+
+  async getRuntimes(): Promise<
+    Array<{ language: string; versions: string[] }>
+  > {
+    return [{ language: "python3", versions: ["3.11", "3.9"] }];
   }
 
   // Debug endpoint

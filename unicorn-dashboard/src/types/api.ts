@@ -15,7 +15,7 @@ export interface Account {
   id: string;
   name: string;
   email: string;
-  type: 'user' | 'bot';
+  type: "user" | "bot";
   organization_id: string;
   role_id: string;
   created_at: string;
@@ -85,10 +85,10 @@ export interface StorageBucket {
   user_id: string;
   created_at: string;
   updated_at: string;
-  files?: File[];
+  files?: StorageFile[];
 }
 
-export interface File {
+export interface StorageFile {
   id: string;
   name: string;
   size: number;
@@ -96,6 +96,11 @@ export interface File {
   bucket_id: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface File {
+  name: string;
+  contents: string;
 }
 
 export interface ComputeContainerInfo {
@@ -116,6 +121,56 @@ export interface ComputeCreateRequest {
   volumes?: Record<string, string>;
 }
 
+export interface ProcessInfo {
+  stdin?: string;
+  time?: string;
+  max_opened_files?: number;
+  max_processes?: number;
+  permissions?: Permissions;
+  env?: { [key: string]: string };
+  working_directory?: string;
+}
+
+export interface Permissions {
+  read?: boolean;
+  write?: boolean;
+  network?: boolean;
+}
+
+export interface ExecutionRequest {
+  runtime: {
+    name: string;
+    version?: string;
+  };
+  project: {
+    entry?: string;
+    files: File[];
+  };
+  process?: ProcessInfo;
+}
+
+export interface ProcessResult {
+  stdout: string;
+  stderr: string;
+  output: string;
+  time: number; // ms
+  memory: bigint; // bytes
+  exit_code: number;
+}
+
+export interface WorkerResponse {
+  compile: ProcessResult;
+  run: ProcessResult;
+}
+
+export type ExecutionTaskStatus = "successful" | "error" | "failed";
+
+export interface ResponseTask {
+  status: ExecutionTaskStatus;
+  output: WorkerResponse;
+}
+
+// Legacy types for backward compatibility
 export interface LambdaExecuteRequest {
   runtime: string;
   code: string;
@@ -152,4 +207,4 @@ export interface AuthContext {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
-} 
+}

@@ -26,9 +26,7 @@ type LambdaHandler struct {
 // NewLambdaHandler creates a new Lambda handler
 func NewLambdaHandler(cfg *config.Config, iamStore stores.IAMStore) *LambdaHandler {
 	lambdaURL := cfg.LambdaURL
-	if lambdaURL == "" {
-		lambdaURL = "http://localhost:8081" // Default Lambda API URL
-	}
+	lambdaURL = "http://localhost:6900" // Default Lambda API URL
 	return &LambdaHandler{
 		Config:    cfg,
 		IAMStore:  iamStore,
