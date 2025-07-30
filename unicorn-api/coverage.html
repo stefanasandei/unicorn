@@ -119,24 +119,6 @@
 // @in header
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token. Example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-// @tag.name auth
-// @tag.description Authentication and authorization endpoints
-
-// @tag.name users
-// @tag.description User management endpoints
-
-// @tag.name roles
-// @tag.description Role and permission management endpoints
-
-// @tag.name organizations
-// @tag.description Organization management endpoints
-
-// @tag.name health
-// @tag.description Health check and monitoring endpoints
-
-// @tag.name hello
-// @tag.description Basic connectivity test endpoints
 package main
 
 import (
@@ -163,75 +145,75 @@ var (
         BuildTime = "unknown"
 )
 
-func setupServices(cfg *config.Config) (*handlers.IAMHandler<span class="cov0" title="0">, *handlers.StorageHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler) {
         // setup the stores
         store, err := stores.NewGORMIAMStore("test.db")
-        if err != nil </span><span class="cov0" title="0">{
-                panic("failed to initialize IAM store: " + err.Error())</span>
+        if err != nil {
+                panic("failed to initialize IAM store: " + err.Error())
         }
 
-        <span class="cov0" title="0">storagePath := os.Getenv("STORAGE_PATH")
+        storagePath := os.Getenv("STORAGE_PATH")
         if storagePath == "" {
-                storagePath = ".</span>/storage" // default fallback
+                storagePath = "./storage" // default fallback
         }
         storageStore, err := stores.NewGORMStorageStore("test.db", storagePath)
-        if err != n<span class="cov0" title="0">il {
+        if err != nil {
                 panic("failed to initialize storage store: " + err.Error())
         }
 
-        iamHandler := handlers.NewIAMHandler(s</span><span class="cov0" title="0">tore, cfg)
+        iamHandler := handlers.NewIAMHandler(store, cfg)
         storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
 
-</span>        return iamHandler, storageHandler
+        return iamHandler, storageHandler
 }
 
-func main() {
-        log.Println("Starting Unicorn API...")
+</span>func main() {
+</span>        log.Println("Starting Unicorn API...")
 
-</span>        // Load environment variables
-        i</span>f err := godotenv.Load(); err != nil {
-                log.Println("No .env file found, using system environment variables")
+        <span class="cov0" title="0">// Load environment variables
+        if err := godotenv.Load(); err != nil {
+                log.Println("No </span>.env file found, using system environment variables")
         }
 
-        // Initialize configuration
+        // Initiali<span class="cov0" title="0">ze configuration
         cfg := config.New()
 
         // Set Gin mode
         if cfg.Environment == "production" {
-                gin.SetMode(gin.ReleaseMode)
-        }
+</span>                gin.SetMode(gin.ReleaseMode)
+        }</span>
 
         // Create router
-        router := gin.New()
+        <span class="cov0" title="0">router := gin.New()
 
         // Add middleware
         router.Use(middleware.Logger())
-        router.Use(middleware.Recovery())
-        router.Use(middleware.CORS())
+</span>        router.Use(middleware.Recovery())
+        r</span>outer.Use(middleware.CORS())
 
-        // setup servi</span><span class="cov0" title="0">ces
-        iamHandler, storageHandler := setupServices(cfg)
+        // setup services
+        <span class="cov0" title="0">iamHandler, storageHandler := setupServices(cfg)
 
-</span>        // Setup routes
-        <span class="cov0" title="0">router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+        // Setup routes
+        router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
         routes.SetupRoutes(router, iamHandler, storageHandler)
         router.GET("/health", handlers.HealthCheck)
 
         // Get port from environment or use default
         port := os.Getenv("PORT")
         if port == "" {
-</span>                port = "8080"
-        }</span>
+                port = "8080"
+        }
 
         log.Printf("Starting Unicorn API server on port %s", port)
         log.Printf("Version: %s, Build Time: %s", Version, BuildTime)
         log.Printf("Environment: %s", cfg.Environment)
         log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
 
-        // Start server
-        if err := router.Run(":" + port); err != nil {
+</span>        // Start server
+        i</span>f err := router.Run(":" + port); err != nil {
                 log.Fatal("Failed to start server:", err)
-        }
+        <span class="cov0" title="0">}
 }
 </pre>
 		
@@ -261,26 +243,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/hello": {
-            "get": {
-                "description": "Returns a hello world message. This endpoint is useful for testing basic connectivity to the API.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "hello"
-                ],
-                "summary": "Hello endpoint",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.HelloResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/login": {
             "post": {
                 "description": "Authenticate a user and return a JWT token",
@@ -1172,9 +1134,9 @@ const docTemplate = `{
                 "permissions": {
                     "description": "The permissions assigned to the role (0=Read, 1=Write, 2=Delete)\nexample: [0,1,2]",
                     "type": "array",
-            <span class="cov0" title="0">        "items": {
+                    "items": {
                         "$ref": "#/definitions/models.Permission"
- </span>                   }
+                    }
                 }
             }
         },
@@ -1192,9 +1154,9 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.Role"
                         }
                     ]
-                }
+            <span class="cov0" title="0">    }
             }
-        },
+ </span>       },
         "handlers.CreateUserRequest": {
             "type": "object",
             "required": [
@@ -1304,23 +1266,6 @@ const docTemplate = `{
                 },
                 "version": {
                     "description": "The version of the API\nexample: 1.0.0",
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.HelloResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "description": "The greeting message\nexample: Hello, World!",
-                    "type": "string"
-                },
-                "timestamp": {
-                    "description": "The timestamp when the request was processed\nexample: 2024-01-01T12:00:00Z",
-                    "type": "string"
-                },
-                "version": {
-                    "description": "The API version\nexample: 1.0.0",
                     "type": "string"
                 }
             }
@@ -1686,33 +1631,7 @@ const docTemplate = `{
             "name": "Authorization",
             "in": "header"
         }
-    },
-    "tags": [
-        {
-            "description": "Authentication and authorization endpoints",
-            "name": "auth"
-        },
-        {
-            "description": "User management endpoints",
-            "name": "users"
-        },
-        {
-            "description": "Role and permission management endpoints",
-            "name": "roles"
-        },
-        {
-            "description": "Organization management endpoints",
-            "name": "organizations"
-        },
-        {
-            "description": "Health check and monitoring endpoints",
-            "name": "health"
-        },
-        {
-            "description": "Basic connectivity test endpoints",
-            "name": "hello"
-        }
-    ]
+    }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
@@ -1876,20 +1795,6 @@ type HealthCheckResponse struct {
         Details map[string]interface{} `json:"details,omitempty"`
 }
 
-// HelloResponse represents the hello endpoint response
-// swagger:model
-type HelloResponse struct {
-        // The greeting message
-        // example: Hello, World!
-        Message string `json:"message"`
-        // The timestamp when the request was processed
-        // example: 2024-01-01T12:00:00Z
-        Timestamp time.Time `json:"timestamp"`
-        // The API version
-        // example: 1.0.0
-        Version string `json:"version"`
-}
-
 // HealthCheck godoc
 // @Summary      Health check
 // @Description  Get the health status of the API. This endpoint can be used by load balancers and monitoring systems to verify the API is running properly.
@@ -1898,7 +1803,7 @@ type HelloResponse struct {
 // @Success      200   {object}  HealthCheckResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /health [get]
-func HealthCheck(c *gin.Context) <span class="cov0" title="0">{
+func HealthCheck(c *gin.Context) {
         response := HealthCheckResponse{
                 Status:    "healthy",
                 Timestamp: time.Now(),
@@ -1906,24 +1811,7 @@ func HealthCheck(c *gin.Context) <span class="cov0" title="0">{
         }
 
         c.JSON(http.StatusOK, response)
-}</span>
-
-// Hello godoc
-// @Summary      Hello endpoint
-// @Description  Returns a hello world message. This endpoint is useful for testing basic connectivity to the API.
-// @Tags         hello
-// @Produce      json
-// @Success      200   {object}  HelloResponse
-// @Router       /api/v1/hello [get]
-func Hello(c *gin.Context) <span class="cov0" title="0">{
-        response := HelloResponse{
-                Message:   "Hello, World!",
-                Timestamp: time.Now(),
-                Version:   "1.0.0",
-        }
-
-        c.JSON(http.StatusOK, response)
-}</span>
+}
 </pre>
 		
 		<pre class="file" id="file5" style="display: none">package handlers

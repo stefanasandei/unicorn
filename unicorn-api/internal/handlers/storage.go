@@ -15,9 +15,9 @@ import (
 )
 
 type StorageHandler struct {
-	store   *stores.GORMStorageStore
+	store    *stores.GORMStorageStore
 	iamStore stores.IAMStore
-	config  *config.Config
+	config   *config.Config
 }
 
 func NewStorageHandler(store *stores.GORMStorageStore, iamStore stores.IAMStore, config *config.Config) *StorageHandler {
@@ -52,12 +52,12 @@ func (h *StorageHandler) getUserPermissions(userID uuid.UUID) (models.Permission
 	if err != nil {
 		return nil, err
 	}
-	
+
 	role, err := h.iamStore.GetRoleByID(account.RoleID.String())
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return role.Permissions, nil
 }
 
@@ -74,7 +74,7 @@ type CreateBucketRequest struct {
 // ListBucketsHandler lists all buckets owned by the authenticated user
 // @Summary List buckets
 // @Description List all storage buckets owned by the authenticated user
-// @Tags storage
+// @Tags Storage
 // @Produce json
 // @Param Authorization header string true "Bearer token" default(Bearer <token>)
 // @Success 200 {array} models.StorageBucket
@@ -102,7 +102,7 @@ func (h *StorageHandler) ListBucketsHandler(c *gin.Context) {
 // CreateBucketHandler handles bucket creation
 // @Summary Create bucket
 // @Description Create a new storage bucket
-// @Tags storage
+// @Tags Storage
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer token" default(Bearer <token>)
@@ -118,31 +118,31 @@ func (h *StorageHandler) CreateBucketHandler(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid or missing token"})
 		return
 	}
-	
+
 	userID, err := uuid.Parse(claims.AccountID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid user id in token"})
 		return
 	}
-	
+
 	// Check user permissions
 	userPermissions, err := h.getUserPermissions(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch user permissions"})
 		return
 	}
-	
+
 	if !hasPermission(userPermissions, models.Write) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: write access required"})
 		return
 	}
-	
+
 	var req CreateBucketRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid request"})
 		return
 	}
-	
+
 	bucket := models.StorageBucket{
 		Name:   req.Name,
 		UserID: userID,
@@ -158,7 +158,7 @@ func (h *StorageHandler) CreateBucketHandler(c *gin.Context) {
 // UploadFileHandler handles file uploads to a bucket
 // @Summary Upload file
 // @Description Upload a file to a storage bucket
-// @Tags storage
+// @Tags Storage
 // @Accept multipart/form-data
 // @Produce json
 // @Param Authorization header string true "Bearer token" default(Bearer <token>)
@@ -189,26 +189,26 @@ func (h *StorageHandler) UploadFileHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid bucket id"})
 		return
 	}
-	
+
 	bucket, err := h.store.GetBucketByID(bucketUUID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: "bucket not found"})
 		return
 	}
-	
+
 	// Check if user owns the bucket
 	if bucket.UserID != userID {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: bucket does not belong to user"})
 		return
 	}
-	
+
 	// Check user permissions
 	userPermissions, err := h.getUserPermissions(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch user permissions"})
 		return
 	}
-	
+
 	if !hasPermission(userPermissions, models.Write) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: write access required"})
 		return
@@ -245,7 +245,7 @@ func (h *StorageHandler) UploadFileHandler(c *gin.Context) {
 // DownloadFileHandler handles file downloads from a bucket
 // @Summary Download file
 // @Description Download a file from a storage bucket
-// @Tags storage
+// @Tags Storage
 // @Produce octet-stream
 // @Param Authorization header string true "Bearer token" default(Bearer <token>)
 // @Param bucket_id path string true "Bucket ID"
@@ -281,31 +281,31 @@ func (h *StorageHandler) DownloadFileHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid file id"})
 		return
 	}
-	
+
 	bucket, err := h.store.GetBucketByID(bucketUUID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: "bucket not found"})
 		return
 	}
-	
+
 	// Check if user owns the bucket
 	if bucket.UserID != userID {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: bucket does not belong to user"})
 		return
 	}
-	
+
 	// Check user permissions
 	userPermissions, err := h.getUserPermissions(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch user permissions"})
 		return
 	}
-	
+
 	if !hasPermission(userPermissions, models.Read) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: read access required"})
 		return
 	}
-	
+
 	fileModel, err := h.store.GetFile(bucketUUID, fileUUID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: "file not found"})
@@ -318,7 +318,7 @@ func (h *StorageHandler) DownloadFileHandler(c *gin.Context) {
 // ListFilesHandler lists files in a bucket
 // @Summary List files
 // @Description List all files in a storage bucket
-// @Tags storage
+// @Tags Storage
 // @Produce json
 // @Param Authorization header string true "Bearer token" default(Bearer <token>)
 // @Param bucket_id path string true "Bucket ID"
@@ -347,31 +347,31 @@ func (h *StorageHandler) ListFilesHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid bucket id"})
 		return
 	}
-	
+
 	bucket, err := h.store.GetBucketByID(bucketUUID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: "bucket not found"})
 		return
 	}
-	
+
 	// Check if user owns the bucket
 	if bucket.UserID != userID {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: bucket does not belong to user"})
 		return
 	}
-	
+
 	// Check user permissions
 	userPermissions, err := h.getUserPermissions(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch user permissions"})
 		return
 	}
-	
+
 	if !hasPermission(userPermissions, models.Read) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: read access required"})
 		return
 	}
-	
+
 	files, err := h.store.ListFiles(bucketUUID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
@@ -383,7 +383,7 @@ func (h *StorageHandler) ListFilesHandler(c *gin.Context) {
 // DeleteFileHandler deletes a file from a bucket
 // @Summary Delete file
 // @Description Delete a file from a storage bucket
-// @Tags storage
+// @Tags Storage
 // @Param Authorization header string true "Bearer token" default(Bearer <token>)
 // @Param bucket_id path string true "Bucket ID"
 // @Param file_id path string true "File ID"
@@ -418,31 +418,31 @@ func (h *StorageHandler) DeleteFileHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid file id"})
 		return
 	}
-	
+
 	bucket, err := h.store.GetBucketByID(bucketUUID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{Error: "bucket not found"})
 		return
 	}
-	
+
 	// Check if user owns the bucket
 	if bucket.UserID != userID {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: bucket does not belong to user"})
 		return
 	}
-	
+
 	// Check user permissions
 	userPermissions, err := h.getUserPermissions(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch user permissions"})
 		return
 	}
-	
+
 	if !hasPermission(userPermissions, models.Delete) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Error: "permission denied: delete access required"})
 		return
 	}
-	
+
 	if err := h.store.DeleteFile(bucketUUID, fileUUID); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return

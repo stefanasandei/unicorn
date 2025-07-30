@@ -497,6 +497,34 @@ definitions:
           example: 2024-01-01T12:00:00Z
         type: string
     type: object
+  models.SecretBodyRequest:
+    properties:
+      metadata:
+        type: string
+      name:
+        type: string
+      value:
+        type: string
+    required:
+    - name
+    - value
+    type: object
+  models.SecretResponse:
+    description: A secret response without sensitive data.
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      metadata:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
   models.StorageBucket:
     description: A storage bucket owned by a user, containing files.
     properties:
@@ -519,6 +547,13 @@ definitions:
         type: string
       user_id:
         description: The ID of the user who owns the bucket
+        type: string
+    type: object
+  models.UpdateSecretBody:
+    properties:
+      metadata:
+        type: string
+      value:
         type: string
     type: object
 host: localhost:8080
@@ -836,7 +871,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: List buckets
       tags:
-      - storage
+      - Storage
     post:
       consumes:
       - application/json
@@ -875,7 +910,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Create bucket
       tags:
-      - storage
+      - Storage
   /buckets/{bucket_id}/files:
     get:
       description: List all files in a storage bucket
@@ -918,7 +953,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: List files
       tags:
-      - storage
+      - Storage
     post:
       consumes:
       - multipart/form-data
@@ -965,7 +1000,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Upload file
       tags:
-      - storage
+      - Storage
   /buckets/{bucket_id}/files/{file_id}:
     delete:
       description: Delete a file from a storage bucket
@@ -1007,7 +1042,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Delete file
       tags:
-      - storage
+      - Storage
     get:
       description: Download a file from a storage bucket
       parameters:
@@ -1052,7 +1087,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Download file
       tags:
-      - storage
+      - Storage
   /health:
     get:
       description: Get the health status of the API. This endpoint can be used by
@@ -1071,6 +1106,155 @@ paths:
       summary: Health check
       tags:
       - health
+  /secrets:
+    get:
+      description: List all secrets for the authenticated user (does not return secret
+        values)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SecretResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List secrets
+      tags:
+      - Secrets Manager
+    post:
+      consumes:
+      - application/json
+      description: Create a new secret for the authenticated user
+      parameters:
+      - description: Secret details to create
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/models.SecretBodyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SecretResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create secret
+      tags:
+      - Secrets Manager
+  /secrets/{id}:
+    delete:
+      description: Delete a secret for the authenticated user
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete secret
+      tags:
+      - Secrets Manager
+    get:
+      description: Get a secret and its decrypted value for the authenticated user
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get secret
+      tags:
+      - Secrets Manager
+    put:
+      consumes:
+      - application/json
+      description: Update the value and/or metadata for a secret
+      parameters:
+      - description: Secret ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Secret update
+        in: body
+        name: secret
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSecretBody'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Update secret
+      tags:
+      - Secrets Manager
 securityDefinitions:
   BearerAuth:
     description: 'Type "Bearer" followed by a space and JWT token. Example: "Bearer

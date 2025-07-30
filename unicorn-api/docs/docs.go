@@ -446,7 +446,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "List buckets",
                 "parameters": [
@@ -486,7 +486,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Create bucket",
                 "parameters": [
@@ -543,7 +543,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "List files",
                 "parameters": [
@@ -608,7 +608,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Upload file",
                 "parameters": [
@@ -676,7 +676,7 @@ const docTemplate = `{
                     "application/octet-stream"
                 ],
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Download file",
                 "parameters": [
@@ -739,7 +739,7 @@ const docTemplate = `{
             "delete": {
                 "description": "Delete a file from a storage bucket",
                 "tags": [
-                    "storage"
+                    "Storage"
                 ],
                 "summary": "Delete file",
                 "parameters": [
@@ -812,6 +812,229 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/handlers.HealthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/secrets": {
+            "get": {
+                "description": "List all secrets for the authenticated user (does not return secret values)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "List secrets",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SecretResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new secret for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Create secret",
+                "parameters": [
+                    {
+                        "description": "Secret details to create",
+                        "name": "secret",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SecretBodyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SecretResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/secrets/{id}": {
+            "get": {
+                "description": "Get a secret and its decrypted value for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Get secret",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the value and/or metadata for a secret",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Update secret",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Secret update",
+                        "name": "secret",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSecretBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a secret for the authenticated user",
+                "tags": [
+                    "Secrets Manager"
+                ],
+                "summary": "Delete secret",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secret ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
@@ -1371,6 +1594,48 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SecretBodyRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "value"
+            ],
+            "properties": {
+                "metadata": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SecretResponse": {
+            "description": "A secret response without sensitive data.",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.StorageBucket": {
             "description": "A storage bucket owned by a user, containing files.",
             "type": "object",
@@ -1400,6 +1665,17 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "description": "The ID of the user who owns the bucket",
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateSecretBody": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "type": "string"
+                },
+                "value": {
                     "type": "string"
                 }
             }
