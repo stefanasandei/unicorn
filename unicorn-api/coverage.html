@@ -125,6 +125,7 @@ package main
 import (
         "log"
         "os"
+        "path/filepath"
 
         "unicorn-api/internal/config"
         "unicorn-api/internal/handlers"
@@ -146,83 +147,102 @@ var (
         BuildTime = "unknown"
 )
 
+// setupServices initializes all services and handlers
 func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler) {
-        // setup the stores
-        store, err := stores.NewGORMIAMStore("test.db")
-        if err != nil {
-                panic("failed to initialize IAM store: " + err.Error())
-        }
-        if err := store.SeedAdmin(cfg); err != nil {
-                panic("failed to seed admin: " + err.Error())
+        // Get database path from environment or use default
+        dbPath := os.Getenv("DB_PATH")
+        if dbPath == "" {
+                dbPath = "unicorn.db"
         }
 
+        // Ensure database directory exists
+        dbDir := filepath.Dir(dbPath)
+        if err := os.MkdirAll(dbDir, 0755); err != nil {
+                log.Fatal("Failed to create database directory:", err)
+        }
+
+        // Setup IAM store
+        iamStore, err := stores.NewGORMIAMStore(dbPath)
+        if err != nil {
+                log.Fatal("Failed to initialize IAM store:", err)
+        }
+        if err := iamS</span><span class="cov0" title="0">tore.SeedAdmin(cfg); err != nil {
+                log.Fatal("Failed to seed admin:", err)
+</span>        }
+
+        <span class="cov0" title="0">// Setup storage store
         storagePath := os.Getenv("STORAGE_PATH")
-        if storagePath == "" {
-                storagePath = "./storage" // default fallback
+        if storagePath ==</span> "" {
+                storagePath = "./storage"
         }
-        storageStore, err := stores.NewGORMStorageStore("test.db", storagePath)
+        if err := o<span class="cov0" title="0">s.MkdirAll(storagePath, 0755); err != nil {
+                log.Fatal("Failed to create storage directory:", err)
+        }
+        storageStore, err := stores.NewGORMStorageStore(dbPath, storagePath)
         if err != nil {
-                panic("failed to initialize storage store: " + err.Error())
-        }
+</span>                log.Fatal("Failed to initialize storage store:", err)
+        }</span>
 
-        secretsStore, err := stores.NewSecretStore("test.db")
-        if err != nil </span><span class="cov0" title="0">{
-                panic("failed to initialize secrets store: " + err.Erro</span>r())
+        // Setup secrets store
+        <span class="cov0" title="0">secretsStore, err := stores.NewSecretStore(dbPath)
+        if err != nil {
+                log.Fatal("Failed to initialize secrets store:", err)
         }
-
-        <span class="cov0" title="0">iamHandler := handlers.NewIAMHandler(store, cfg)
-        secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
-        storageHandler :=</span> handlers.NewStorageHandler(storageStore, store, cfg)
-        computeHandler := handlers.NewComputeHandler(cfg, store)
-        lambdaHandler := handlers.NewLambdaHandler(cfg, store)
+</span>
+        /</span>/ Create handlers
+        iamHandler := handlers.NewIAMHandler(iamStore, cfg)
+        secretsHandler := handlers.NewSecretsHandler(secretsStore, iamStore, cfg)
+        <span class="cov0" title="0">storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
+        computeHandler := handlers.NewComputeHandler(cfg, iamStore)
+        lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
 
         return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler
 }
 
 func main() {
-</span>        log.Println("Starting Unicorn API...")
+        log.Println("Starting Unicorn API...")
 
-</span>        // Load environment variables
+        // Load environment variables
         if err := godotenv.Load(); err != nil {
-        <span class="cov0" title="0">        log.Println("No .env file found, using system environment variables")
+                log.Println("No .env file found, using system environment variables")
         }
 
         // Initialize configuration
-</span>        cfg := config.New()
+        cfg := config.New()
 
 </span>        // Set Gin mode
-        if cfg.Environment == "production" {
-        <span class="cov0" title="0">        gin.SetMode(gin.ReleaseMode)
-        }
+        i</span>f cfg.Environment == "production" {
+                gin.SetMode(gin.ReleaseMode)
+        <span class="cov0" title="0">}
 
         // Create router
         router := gin.New()
 
         // Add middleware
         router.Use(middleware.Logger())
-        router.Use(middleware.Recovery())
-        router.Use(middleware.CORS())
+</span>        router.Use(middleware.Recovery())
+        r</span>outer.Use(middleware.CORS())
 
-        // setup services
+        // Setup services
         iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler := setupServices(cfg)
 
         // Setup routes
         router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
         routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
-        router.GET("/h</span><span class="cov0" title="0">ealth", handlers.HealthCheck)
+        router.GET("/health", handlers.HealthCheck)
 
-        /</span>/ Get port from environment or use default
+        // Get port from environment or use default
         port := os.Getenv("PORT")
-        <span class="cov0" title="0">if port == "" {
+        if port == "" {
                 port = "8080"
         }
 
         log.Printf("Starting Unicorn API server on port %s", port)
         log.Printf("Version: %s, Build Time: %s", Version, BuildTime)
-        log.Printf("Environment: %s", cfg.Environment</span><span class="cov0" title="0">)
+        log.Printf("Environment: %s", cfg.Environment)
         log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
 
-</span>        // Start server
+        // Start server
         if err := router.Run(":" + port); err != nil {
                 log.Fatal("Failed to start server:", err)
         }
@@ -654,48 +674,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Container ID",
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.ComputeContainerInfo"
                         }
                     },
                     "400": {
-                        "description": "Bad request",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -721,7 +726,7 @@ const docTemplate = `{
                 "summary": "List compute containers",
                 "responses": {
                     "200": {
-                        "description": "List of containers",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -732,28 +737,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -1166,9 +1162,9 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
-            <span class="cov0" title="0">        }
+                    }
                 }
- </span>           },
+            },
             "post": {
                 "description": "Create a new role with specified permissions. Permissions are: 0=Read, 1=Write, 2=Delete",
                 "consumes": [
@@ -1190,9 +1186,9 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handlers.CreateRoleRequest"
                         }
-                    }
+            <span class="cov0" title="0">        }
                 ],
-                "responses": {
+ </span>               "responses": {
                     "201": {
                         "description": "Created",
                         "schema": {
@@ -1288,19 +1284,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -1343,25 +1339,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -1402,25 +1398,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -1464,25 +1460,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -1514,25 +1510,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "403": {
-                        "description": "Forbidden - insufficient permissions",
+                        "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/errors.AppError"
                         }
                     }
                 }
@@ -1662,6 +1658,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "errors.AppError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status_code": {
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.AssignRoleRequest": {
             "type": "object",
             "required": [
@@ -2492,9 +2508,9 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "\"Type 'Bearer: ' + your JWT token to authorize\"",
+            "description": "\"Type 'Bearer ' + your JWT token to authorize\"",
             "type": "apiKey",
-            "name": "Bearer",
+            "name": "Authorization",
             "in": "header"
         }
     }

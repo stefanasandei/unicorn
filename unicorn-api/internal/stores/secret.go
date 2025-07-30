@@ -19,6 +19,15 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// SecretStoreInterface defines the interface for secret operations
+type SecretStoreInterface interface {
+	ListSecrets(userID uuid.UUID) ([]models.SecretResponse, error)
+	CreateSecret(userID uuid.UUID, name, value, metadata string) (*models.Secret, error)
+	GetSecret(userID, secretID uuid.UUID) (*models.Secret, string, error)
+	UpdateSecret(userID, secretID uuid.UUID, value, metadata string) error
+	DeleteSecret(userID, secretID uuid.UUID) error
+}
+
 type SecretStore struct {
 	db *gorm.DB
 }

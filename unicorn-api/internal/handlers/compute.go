@@ -1,196 +1,51 @@
 package handlers
 
 import (
-	"context"
-	"fmt"
-	"math/rand"
 	"net/http"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"unicorn-api/internal/auth"
+	"unicorn-api/internal/common/errors"
+	"unicorn-api/internal/common/validation"
 	"unicorn-api/internal/config"
 	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
+	"unicorn-api/internal/services"
 	"unicorn-api/internal/stores"
 )
 
+// ComputeHandler handles compute-related operations
 type ComputeHandler struct {
-	Config   *config.Config
-	IAMStore stores.IAMStore
+	service   *services.ComputeService
+	validator *validation.Validator
+	config    *config.Config
+	iamStore  stores.IAMStore
 }
 
+// NewComputeHandler creates a new compute handler
 func NewComputeHandler(cfg *config.Config, iamStore stores.IAMStore) *ComputeHandler {
-	return &ComputeHandler{Config: cfg, IAMStore: iamStore}
+	return &ComputeHandler{
+		service:   services.NewComputeService(),
+		validator: validation.NewValidator(),
+		config:    cfg,
+		iamStore:  iamStore,
+	}
 }
 
-// CreateCompute godoc
-// @Summary Create a compute container
-// @Description Create a new compute container with the specified image and configuration
-// @Tags Compute
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param request body models.ComputeCreateRequest true "Compute container creation request"
-// @Success 200 {object} map[string]string "Container ID"
-// @Failure 400 {object} map[string]string "Bad request"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 403 {object} map[string]string "Forbidden - insufficient permissions"
-// @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/v1/compute/create [post]
-func (h *ComputeHandler) CreateCompute(c *gin.Context) {
-	var req models.ComputeCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	claims, err := h.getClaims(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	if !h.hasPermission(claims, "compute", 1) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
-
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "docker unavailable"})
-		return
-	}
-	defer cli.Close()
-
-	ctx := context.Background()
-	// Pull image if not present
-	_, err = cli.ImagePull(ctx, req.Image, types.ImagePullOptions{})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to pull image"})
-		return
-	}
-
-	// Set resource limits
-	resources := container.Resources{}
-	switch req.Preset {
-	case models.PresetMicro:
-		resources.NanoCPUs = 500_000_000     // 0.5 CPU
-		resources.Memory = 256 * 1024 * 1024 // 256MB
-	case models.PresetSmall:
-		resources.NanoCPUs = 1_000_000_000   // 1 CPU
-		resources.Memory = 512 * 1024 * 1024 // 512MB
-	}
-
-	// Port bindings
-	exposedPorts := natPortSet(req.Ports)
-	portBindings := natPortBindings(req.Ports)
-
-	// Ensure the exposed port is included in the ports map
-	if req.ExposePort != "" {
-		if _, exists := req.Ports[req.ExposePort]; !exists {
-			// If the exposed port is not in the ports map, add it with a random host port
-			hostPort := fmt.Sprintf("%d", 10000+rand.Intn(10000))
-			req.Ports[req.ExposePort] = hostPort
-
-			// Update port bindings
-			exposedPorts = natPortSet(req.Ports)
-			portBindings = natPortBindings(req.Ports)
-		}
-	}
-
-	containerName := "compute-" + claims.AccountID + "-" + randString(8)
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image:        req.Image,
-		ExposedPorts: exposedPorts,
-		Labels:       map[string]string{"owner": claims.AccountID},
-	}, &container.HostConfig{
-		PortBindings: portBindings,
-		Resources:    resources,
-	}, nil, nil, containerName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "container create failed"})
-		return
-	}
-
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "container start failed"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"id": resp.ID})
-}
-
-// ListCompute godoc
-// @Summary List compute containers
-// @Description List all compute containers owned by the authenticated user
-// @Tags Compute
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {array} models.ComputeContainerInfo "List of containers"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 403 {object} map[string]string "Forbidden - insufficient permissions"
-// @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/v1/compute/list [get]
-func (h *ComputeHandler) ListCompute(c *gin.Context) {
-	claims, err := h.getClaims(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	if !h.hasPermission(claims, "compute", 0) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
-
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "docker unavailable"})
-		return
-	}
-	defer cli.Close()
-
-	ctx := context.Background()
-	filter := filters.NewArgs()
-	filter.Add("label", "owner="+claims.AccountID)
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filter})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "list failed"})
-		return
-	}
-	var result []models.ComputeContainerInfo
-	for _, ctr := range containers {
-		ports := map[string]string{}
-		for _, p := range ctr.Ports {
-			ports[formatPort(p.PrivatePort, p.Type)] = formatPort(p.PublicPort, p.Type)
-		}
-		result = append(result, models.ComputeContainerInfo{
-			ID:     ctr.ID,
-			Image:  ctr.Image,
-			Status: ctr.Status,
-			Ports:  ports,
-		})
-	}
-	c.JSON(http.StatusOK, result)
-}
-
-// Helpers
+// getClaims extracts claims from the request
 func (h *ComputeHandler) getClaims(c *gin.Context) (*auth.Claims, error) {
 	claims, exists := middleware.GetClaimsFromContext(c)
 	if !exists {
-		return nil, fmt.Errorf("authentication required")
+		return nil, errors.ErrUnauthorized
 	}
 	return claims, nil
 }
 
+// hasPermission checks if user has the required permission
 func (h *ComputeHandler) hasPermission(claims *auth.Claims, resource string, perm int) bool {
-	// Look up the user's role and check if it has the required permission
-	role, err := h.IAMStore.GetRoleByID(claims.RoleID)
+	role, err := h.iamStore.GetRoleByID(claims.RoleID)
 	if err != nil {
 		return false
 	}
@@ -202,37 +57,88 @@ func (h *ComputeHandler) hasPermission(claims *auth.Claims, resource string, per
 	return false
 }
 
-// Docker helpers
-func natPortSet(ports map[string]string) nat.PortSet {
-	ps := nat.PortSet{}
-	for cport := range ports {
-		p, _ := nat.NewPort("tcp", cport)
-		ps[p] = struct{}{}
+// CreateCompute godoc
+// @Summary Create a compute container
+// @Description Create a new compute container with the specified image and configuration
+// @Tags Compute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body models.ComputeCreateRequest true "Compute container creation request"
+// @Success 200 {object} models.ComputeContainerInfo
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
+// @Router /api/v1/compute/create [post]
+func (h *ComputeHandler) CreateCompute(c *gin.Context) {
+	claims, err := h.getClaims(c)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
 	}
-	return ps
+
+	if !h.hasPermission(claims, "compute", 1) {
+		errors.RespondWithPermissionError(c, "create compute containers")
+		return
+	}
+
+	var req models.ComputeCreateRequest
+	if err := h.validator.BindAndValidate(c, &req); err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	userID, err := uuid.Parse(claims.AccountID)
+	if err != nil {
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
+		return
+	}
+
+	containerInfo, err := h.service.CreateContainer(userID, req)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, containerInfo)
 }
 
-func natPortBindings(ports map[string]string) nat.PortMap {
-	pm := nat.PortMap{}
-	for cport, hport := range ports {
-		p, _ := nat.NewPort("tcp", cport)
-		pm[p] = []nat.PortBinding{{HostPort: hport}}
+// ListCompute godoc
+// @Summary List compute containers
+// @Description List all compute containers owned by the authenticated user
+// @Tags Compute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.ComputeContainerInfo
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
+// @Router /api/v1/compute/list [get]
+func (h *ComputeHandler) ListCompute(c *gin.Context) {
+	claims, err := h.getClaims(c)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
 	}
-	return pm
-}
 
-func formatPort(port uint16, typ string) string {
-	if port == 0 {
-		return ""
+	if !h.hasPermission(claims, "compute", 0) {
+		errors.RespondWithPermissionError(c, "list compute containers")
+		return
 	}
-	return fmt.Sprintf("%d/%s", port, typ)
-}
 
-func randString(n int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyz0123456789")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	userID, err := uuid.Parse(claims.AccountID)
+	if err != nil {
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
+		return
 	}
-	return string(b)
+
+	containers, err := h.service.ListContainers(userID)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, containers)
 }

@@ -2,14 +2,18 @@ package handlers
 
 import (
 	"net/http"
-	"unicorn-api/internal/auth"
-	"unicorn-api/internal/config"
-	"unicorn-api/internal/middleware"
-	"unicorn-api/internal/models"
-	"unicorn-api/internal/stores"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"unicorn-api/internal/auth"
+	"unicorn-api/internal/common/errors"
+	"unicorn-api/internal/common/validation"
+	"unicorn-api/internal/config"
+	"unicorn-api/internal/middleware"
+	"unicorn-api/internal/models"
+	"unicorn-api/internal/services"
+	"unicorn-api/internal/stores"
 )
 
 // SecretsHandler provides endpoints for managing user secrets.
@@ -17,23 +21,34 @@ import (
 // @tag.name Secrets Manager
 // @tag.description Manage encrypted secrets per user.
 type SecretsHandler struct {
-	Store    *stores.SecretStore
-	Config   *config.Config
-	IAMStore stores.IAMStore
+	service   *services.SecretService
+	validator *validation.Validator
+	config    *config.Config
+	iamStore  stores.IAMStore
 }
 
-// Helper to extract claims from Authorization header
+// NewSecretsHandler creates a new secrets handler
+func NewSecretsHandler(secretStore stores.SecretStoreInterface, iamStore stores.IAMStore, cfg *config.Config) *SecretsHandler {
+	return &SecretsHandler{
+		service:   services.NewSecretService(secretStore),
+		validator: validation.NewValidator(),
+		config:    cfg,
+		iamStore:  iamStore,
+	}
+}
+
+// getClaimsFromRequest extracts claims from the Authorization header
 func (h *SecretsHandler) getClaimsFromRequest(c *gin.Context) (*auth.Claims, error) {
 	claims, exists := middleware.GetClaimsFromContext(c)
 	if !exists {
-		return nil, models.ErrTokenInvalid
+		return nil, errors.ErrUnauthorized
 	}
 	return claims, nil
 }
 
-// Helper to check if user has the required permission
+// hasPermission checks if user has the required permission
 func (h *SecretsHandler) hasPermission(claims *auth.Claims, requiredPerm models.Permission) bool {
-	role, err := h.IAMStore.GetRoleByID(claims.RoleID)
+	role, err := h.iamStore.GetRoleByID(claims.RoleID)
 	if err != nil {
 		return false
 	}
@@ -53,33 +68,35 @@ func (h *SecretsHandler) hasPermission(claims *auth.Claims, requiredPerm models.
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {array} models.SecretResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
-// @Failure 500 {object} ErrorResponse
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
 // @Router /api/v1/secrets [get]
 func (h *SecretsHandler) ListSecrets(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid or missing token"})
+		errors.RespondWithError(c, err)
 		return
 	}
 
 	// Check if user has read permission
 	if !h.hasPermission(claims, models.Read) {
-		c.JSON(http.StatusForbidden, ErrorResponse{Error: "insufficient permissions to list secrets"})
+		errors.RespondWithPermissionError(c, "list secrets")
 		return
 	}
 
 	userID, err := uuid.Parse(claims.AccountID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid user id in token"})
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
 		return
 	}
-	secrets, err := h.Store.ListSecrets(userID)
+
+	secrets, err := h.service.ListSecrets(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		errors.RespondWithError(c, err)
 		return
 	}
+
 	c.JSON(http.StatusOK, secrets)
 }
 
@@ -92,39 +109,42 @@ func (h *SecretsHandler) ListSecrets(c *gin.Context) {
 // @Security BearerAuth
 // @Param secret body models.SecretBodyRequest true "Secret details to create"
 // @Success 201 {object} models.SecretResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
 // @Router /api/v1/secrets [post]
 func (h *SecretsHandler) CreateSecret(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid or missing token"})
+		errors.RespondWithError(c, err)
 		return
 	}
 
 	// Check if user has write permission
 	if !h.hasPermission(claims, models.Write) {
-		c.JSON(http.StatusForbidden, ErrorResponse{Error: "insufficient permissions to create secrets"})
+		errors.RespondWithPermissionError(c, "create secrets")
 		return
 	}
 
 	userID, err := uuid.Parse(claims.AccountID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid user id in token"})
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
 		return
 	}
+
 	var req models.SecretBodyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	if err := h.validator.BindAndValidate(c, &req); err != nil {
+		errors.RespondWithError(c, err)
 		return
 	}
-	secret, err := h.Store.CreateSecret(userID, req.Name, req.Value, req.Metadata)
+
+	secret, err := h.service.CreateSecret(userID, req.Name, req.Value, req.Metadata)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		errors.RespondWithError(c, err)
 		return
 	}
+
 	resp := models.SecretResponse{
 		ID:        secret.ID,
 		Name:      secret.Name,
@@ -133,6 +153,7 @@ func (h *SecretsHandler) CreateSecret(c *gin.Context) {
 		UserID:    secret.UserID,
 		Metadata:  secret.MetadataRaw,
 	}
+
 	c.JSON(http.StatusCreated, resp)
 }
 
@@ -144,39 +165,42 @@ func (h *SecretsHandler) CreateSecret(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Secret ID"
 // @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 404 {object} errors.AppError
 // @Router /api/v1/secrets/{id} [get]
 func (h *SecretsHandler) ReadSecret(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid or missing token"})
+		errors.RespondWithError(c, err)
 		return
 	}
 
 	// Check if user has read permission
 	if !h.hasPermission(claims, models.Read) {
-		c.JSON(http.StatusForbidden, ErrorResponse{Error: "insufficient permissions to read secrets"})
+		errors.RespondWithPermissionError(c, "read secrets")
 		return
 	}
 
 	userID, err := uuid.Parse(claims.AccountID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid user id in token"})
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
 		return
 	}
+
 	secretID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid secret id"})
+		errors.RespondWithError(c, errors.ErrBadRequest.WithDetails("Invalid secret ID"))
 		return
 	}
-	secret, value, err := h.Store.GetSecret(userID, secretID)
+
+	secret, value, err := h.service.GetSecret(userID, secretID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		errors.RespondWithError(c, err)
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":         secret.ID,
 		"name":       secret.Name,
@@ -197,43 +221,47 @@ func (h *SecretsHandler) ReadSecret(c *gin.Context) {
 // @Param id path string true "Secret ID"
 // @Param secret body models.UpdateSecretBody true "Secret update"
 // @Success 204
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
 // @Router /api/v1/secrets/{id} [put]
 func (h *SecretsHandler) UpdateSecret(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid or missing token"})
+		errors.RespondWithError(c, err)
 		return
 	}
 
 	// Check if user has write permission
 	if !h.hasPermission(claims, models.Write) {
-		c.JSON(http.StatusForbidden, ErrorResponse{Error: "insufficient permissions to update secrets"})
+		errors.RespondWithPermissionError(c, "update secrets")
 		return
 	}
 
 	userID, err := uuid.Parse(claims.AccountID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid user id in token"})
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
 		return
 	}
+
 	secretID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid secret id"})
+		errors.RespondWithError(c, errors.ErrBadRequest.WithDetails("Invalid secret ID"))
 		return
 	}
+
 	var req models.UpdateSecretBody
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+	if err := h.validator.BindAndValidate(c, &req); err != nil {
+		errors.RespondWithError(c, err)
 		return
 	}
-	if err := h.Store.UpdateSecret(userID, secretID, req.Value, req.Metadata); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+
+	if err := h.service.UpdateSecret(userID, secretID, req.Value, req.Metadata); err != nil {
+		errors.RespondWithError(c, err)
 		return
 	}
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -244,37 +272,40 @@ func (h *SecretsHandler) UpdateSecret(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Secret ID"
 // @Success 204
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse "Forbidden - insufficient permissions"
-// @Failure 500 {object} ErrorResponse
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
 // @Router /api/v1/secrets/{id} [delete]
 func (h *SecretsHandler) DeleteSecret(c *gin.Context) {
 	claims, err := h.getClaimsFromRequest(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid or missing token"})
+		errors.RespondWithError(c, err)
 		return
 	}
 
 	// Check if user has delete permission
 	if !h.hasPermission(claims, models.Delete) {
-		c.JSON(http.StatusForbidden, ErrorResponse{Error: "insufficient permissions to delete secrets"})
+		errors.RespondWithPermissionError(c, "delete secrets")
 		return
 	}
 
 	userID, err := uuid.Parse(claims.AccountID)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "invalid user id in token"})
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
 		return
 	}
+
 	secretID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid secret id"})
+		errors.RespondWithError(c, errors.ErrBadRequest.WithDetails("Invalid secret ID"))
 		return
 	}
-	if err := h.Store.DeleteSecret(userID, secretID); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+
+	if err := h.service.DeleteSecret(userID, secretID); err != nil {
+		errors.RespondWithError(c, err)
 		return
 	}
+
 	c.Status(http.StatusNoContent)
 }

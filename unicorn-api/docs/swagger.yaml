@@ -1,5 +1,18 @@
 basePath: /
 definitions:
+  errors.AppError:
+    properties:
+      code:
+        type: string
+      details:
+        type: string
+      message:
+        type: string
+      status_code:
+        type: integer
+      timestamp:
+        type: string
+    type: object
   handlers.AssignRoleRequest:
     properties:
       account_id:
@@ -961,35 +974,25 @@ paths:
       - application/json
       responses:
         "200":
-          description: Container ID
+          description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/models.ComputeContainerInfo'
         "400":
-          description: Bad request
+          description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: Create a compute container
@@ -1004,7 +1007,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of containers
+          description: OK
           schema:
             items:
               $ref: '#/definitions/models.ComputeContainerInfo'
@@ -1012,21 +1015,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: List compute containers
@@ -1376,15 +1373,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: List secrets
@@ -1411,19 +1408,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: Create secret
@@ -1444,19 +1441,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: Delete secret
@@ -1481,19 +1478,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: Get secret
@@ -1521,19 +1518,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "403":
-          description: Forbidden - insufficient permissions
+          description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/errors.AppError'
       security:
       - BearerAuth: []
       summary: Update secret
@@ -1622,8 +1619,8 @@ paths:
       - health
 securityDefinitions:
   BearerAuth:
-    description: '"Type ''Bearer: '' + your JWT token to authorize"'
+    description: '"Type ''Bearer '' + your JWT token to authorize"'
     in: header
-    name: Bearer
+    name: Authorization
     type: apiKey
 swagger: "2.0"

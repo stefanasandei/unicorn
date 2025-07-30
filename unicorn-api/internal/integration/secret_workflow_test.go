@@ -41,11 +41,7 @@ func setupTestSecretsHandler(t *testing.T) (*handlers.SecretsHandler, *gin.Engin
 	token, err := auth.GenerateToken(userID.String(), role.ID.String(), cfg)
 	require.NoError(t, err)
 
-	h := &handlers.SecretsHandler{
-		Store:    secretStore,
-		Config:   cfg,
-		IAMStore: iamStore,
-	}
+	h := handlers.NewSecretsHandler(secretStore, iamStore, cfg)
 
 	// Setup router with proper authentication middleware
 	router := gin.Default()

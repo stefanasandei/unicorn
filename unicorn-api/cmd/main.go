@@ -23,6 +23,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"unicorn-api/internal/config"
 	"unicorn-api/internal/handlers"
@@ -44,35 +45,54 @@ var (
 	BuildTime = "unknown"
 )
 
+// setupServices initializes all services and handlers
 func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler) {
-	// setup the stores
-	store, err := stores.NewGORMIAMStore("test.db")
-	if err != nil {
-		panic("failed to initialize IAM store: " + err.Error())
-	}
-	if err := store.SeedAdmin(cfg); err != nil {
-		panic("failed to seed admin: " + err.Error())
+	// Get database path from environment or use default
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "unicorn.db"
 	}
 
+	// Ensure database directory exists
+	dbDir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		log.Fatal("Failed to create database directory:", err)
+	}
+
+	// Setup IAM store
+	iamStore, err := stores.NewGORMIAMStore(dbPath)
+	if err != nil {
+		log.Fatal("Failed to initialize IAM store:", err)
+	}
+	if err := iamStore.SeedAdmin(cfg); err != nil {
+		log.Fatal("Failed to seed admin:", err)
+	}
+
+	// Setup storage store
 	storagePath := os.Getenv("STORAGE_PATH")
 	if storagePath == "" {
-		storagePath = "./storage" // default fallback
+		storagePath = "./storage"
 	}
-	storageStore, err := stores.NewGORMStorageStore("test.db", storagePath)
+	if err := os.MkdirAll(storagePath, 0755); err != nil {
+		log.Fatal("Failed to create storage directory:", err)
+	}
+	storageStore, err := stores.NewGORMStorageStore(dbPath, storagePath)
 	if err != nil {
-		panic("failed to initialize storage store: " + err.Error())
+		log.Fatal("Failed to initialize storage store:", err)
 	}
 
-	secretsStore, err := stores.NewSecretStore("test.db")
+	// Setup secrets store
+	secretsStore, err := stores.NewSecretStore(dbPath)
 	if err != nil {
-		panic("failed to initialize secrets store: " + err.Error())
+		log.Fatal("Failed to initialize secrets store:", err)
 	}
 
-	iamHandler := handlers.NewIAMHandler(store, cfg)
-	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
-	storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
-	computeHandler := handlers.NewComputeHandler(cfg, store)
-	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
+	// Create handlers
+	iamHandler := handlers.NewIAMHandler(iamStore, cfg)
+	secretsHandler := handlers.NewSecretsHandler(secretsStore, iamStore, cfg)
+	storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
+	computeHandler := handlers.NewComputeHandler(cfg, iamStore)
+	lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
 
 	return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler
 }
@@ -101,7 +121,7 @@ func main() {
 	router.Use(middleware.Recovery())
 	router.Use(middleware.CORS())
 
-	// setup services
+	// Setup services
 	iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler := setupServices(cfg)
 
 	// Setup routes
