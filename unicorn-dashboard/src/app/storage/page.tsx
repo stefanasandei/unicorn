@@ -1,31 +1,37 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
+import React, { useEffect, useState } from "react";
+import { Layout } from "@/components/Layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,20 +41,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { FileText, Plus, Upload, Download, Trash2, Folder, File } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { StorageBucket, File as FileType } from '@/types/api';
+} from "@/components/ui/alert-dialog";
+import {
+  FileText,
+  Plus,
+  Upload,
+  Download,
+  Trash2,
+  Folder,
+  File,
+} from "lucide-react";
+import { apiClient } from "@/lib/api";
+import { StorageBucket, StorageFile } from "@/types/api";
 
 export default function StoragePage() {
   const [buckets, setBuckets] = useState<StorageBucket[]>([]);
-  const [selectedBucket, setSelectedBucket] = useState<StorageBucket | null>(null);
-  const [files, setFiles] = useState<FileType[]>([]);
+  const [selectedBucket, setSelectedBucket] = useState<StorageBucket | null>(
+    null
+  );
+  const [files, setFiles] = useState<StorageFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Form states
-  const [newBucketName, setNewBucketName] = useState('');
+  const [newBucketName, setNewBucketName] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -61,7 +77,7 @@ export default function StoragePage() {
       const bucketsData = await apiClient.listBuckets();
       setBuckets(bucketsData);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch buckets');
+      setError(err.response?.data?.error || "Failed to fetch buckets");
     } finally {
       setIsLoading(false);
     }
@@ -72,28 +88,28 @@ export default function StoragePage() {
       const filesData = await apiClient.listFiles(bucketId);
       setFiles(filesData);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch files');
+      setError(err.response?.data?.error || "Failed to fetch files");
     }
   };
 
   const handleCreateBucket = async () => {
     if (!newBucketName.trim()) {
-      setError('Bucket name is required');
+      setError("Bucket name is required");
       return;
     }
 
     try {
       await apiClient.createBucket(newBucketName);
-      setNewBucketName('');
+      setNewBucketName("");
       fetchBuckets();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create bucket');
+      setError(err.response?.data?.error || "Failed to create bucket");
     }
   };
 
   const handleUploadFile = async () => {
     if (!uploadFile || !selectedBucket) {
-      setError('Please select a file and bucket');
+      setError("Please select a file and bucket");
       return;
     }
 
@@ -102,7 +118,7 @@ export default function StoragePage() {
       setUploadFile(null);
       fetchFiles(selectedBucket.id);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to upload file');
+      setError(err.response?.data?.error || "Failed to upload file");
     }
   };
 
@@ -112,15 +128,15 @@ export default function StoragePage() {
     try {
       const blob = await apiClient.downloadFile(selectedBucket.id, fileId);
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = files.find(f => f.id === fileId)?.name || 'download';
+      a.download = files.find((f) => f.id === fileId)?.name || "download";
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to download file');
+      setError(err.response?.data?.error || "Failed to download file");
     }
   };
 
@@ -131,16 +147,16 @@ export default function StoragePage() {
       await apiClient.deleteFile(selectedBucket.id, fileId);
       fetchFiles(selectedBucket.id);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete file');
+      setError(err.response?.data?.error || "Failed to delete file");
     }
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   if (isLoading) {
@@ -158,9 +174,7 @@ export default function StoragePage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Storage</h1>
-          <p className="text-gray-600">
-            Manage your storage buckets and files
-          </p>
+          <p className="text-gray-600">Manage your storage buckets and files</p>
         </div>
 
         {error && (
@@ -217,7 +231,9 @@ export default function StoragePage() {
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button onClick={handleCreateBucket}>Create Bucket</Button>
+                        <Button onClick={handleCreateBucket}>
+                          Create Bucket
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -236,7 +252,9 @@ export default function StoragePage() {
                   <TableBody>
                     {buckets.map((bucket) => (
                       <TableRow key={bucket.id}>
-                        <TableCell className="font-medium">{bucket.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {bucket.name}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="secondary">
                             {bucket.files?.length || 0} files
@@ -298,12 +316,16 @@ export default function StoragePage() {
                             <Input
                               id="file-upload"
                               type="file"
-                              onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                              onChange={(e) =>
+                                setUploadFile(e.target.files?.[0] || null)
+                              }
                             />
                           </div>
                         </div>
                         <DialogFooter>
-                          <Button onClick={handleUploadFile}>Upload File</Button>
+                          <Button onClick={handleUploadFile}>
+                            Upload File
+                          </Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
@@ -323,10 +345,14 @@ export default function StoragePage() {
                     <TableBody>
                       {files.map((file) => (
                         <TableRow key={file.id}>
-                          <TableCell className="font-medium">{file.name}</TableCell>
+                          <TableCell className="font-medium">
+                            {file.name}
+                          </TableCell>
                           <TableCell>{formatFileSize(file.size)}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">{file.content_type}</Badge>
+                            <Badge variant="secondary">
+                              {file.content_type}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             {new Date(file.created_at).toLocaleDateString()}
@@ -348,13 +374,18 @@ export default function StoragePage() {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete File</AlertDialogTitle>
+                                    <AlertDialogTitle>
+                                      Delete File
+                                    </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Are you sure you want to delete this file? This action cannot be undone.
+                                      Are you sure you want to delete this file?
+                                      This action cannot be undone.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => handleDeleteFile(file.id)}
                                       className="bg-red-600 hover:bg-red-700"
@@ -375,7 +406,9 @@ export default function StoragePage() {
             ) : (
               <Card>
                 <CardContent className="flex items-center justify-center h-32">
-                  <p className="text-gray-500">Select a bucket to view its files</p>
+                  <p className="text-gray-500">
+                    Select a bucket to view its files
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -384,4 +417,4 @@ export default function StoragePage() {
       </div>
     </Layout>
   );
-} 
+}

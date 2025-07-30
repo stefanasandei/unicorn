@@ -46,7 +46,7 @@ var (
 )
 
 // setupServices initializes all services and handlers
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler, *handlers.RDBHandler) {
 	// Get database path from environment or use default
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
@@ -93,8 +93,9 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
 	storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
 	computeHandler := handlers.NewComputeHandler(cfg, iamStore)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
+	rdbHandler := handlers.NewRDBHandler(cfg, iamStore)
 
-	return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler
+	return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler
 }
 
 func main() {
@@ -122,11 +123,11 @@ func main() {
 	router.Use(middleware.CORS())
 
 	// Setup services
-	iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler := setupServices(cfg)
+	iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler := setupServices(cfg)
 
 	// Setup routes
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
 	router.GET("/health", handlers.HealthCheck)
 
 	// Get port from environment or use default

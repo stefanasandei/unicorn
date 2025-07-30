@@ -9,7 +9,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, config *config.Config) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, config *config.Config) {
 	// API v1 group
 	v1 := router.Group("/api/v1")
 	{
@@ -58,6 +58,11 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
 			// Lambda routes
 			protected.POST("/lambda/execute", lambdaHandler.ExecuteLambda)
 			protected.POST("/lambda/test", lambdaHandler.TestLambda)
+
+			// RDB routes
+			protected.POST("/rdb/create", rdbHandler.CreateRDB)
+			protected.GET("/rdb/list", rdbHandler.ListRDB)
+			protected.DELETE("/rdb/:id", rdbHandler.DeleteRDB)
 		}
 	}
 }

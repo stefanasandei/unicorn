@@ -43,11 +43,12 @@ func setupIntegrationTest(t *testing.T) (*gin.Engine, *stores.GORMIAMStore, func
 	computeHandler := handlers.NewComputeHandler(cfg, store)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
 	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
+	rdbHandler := handlers.NewRDBHandler(cfg, store)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, handler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
+	routes.SetupRoutes(router, handler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
 
 	// Return cleanup function
 	cleanup := func() {

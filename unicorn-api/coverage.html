@@ -148,7 +148,7 @@ var (
 )
 
 // setupServices initializes all services and handlers
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler, *handlers.RDBHandler) {
         // Get database path from environment or use default
         dbPath := os.Getenv("DB_PATH")
         if dbPath == "" {
@@ -195,8 +195,9 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
         <span class="cov0" title="0">storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
         computeHandler := handlers.NewComputeHandler(cfg, iamStore)
         lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
+        rdbHandler := handlers.NewRDBHandler(cfg, iamStore)
 
-        return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler
+        return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler
 }
 
 func main() {
@@ -208,27 +209,27 @@ func main() {
         }
 
         // Initialize configuration
-        cfg := config.New()
+        cfg := config.</span><span class="cov0" title="0">New()
 
-</span>        // Set Gin mode
-        i</span>f cfg.Environment == "production" {
-                gin.SetMode(gin.ReleaseMode)
-        <span class="cov0" title="0">}
+        /</span>/ Set Gin mode
+        if cfg.Environment == "production" {
+        <span class="cov0" title="0">        gin.SetMode(gin.ReleaseMode)
+        }
 
         // Create router
         router := gin.New()
 
         // Add middleware
-        router.Use(middleware.Logger())
-</span>        router.Use(middleware.Recovery())
-        r</span>outer.Use(middleware.CORS())
+</span>        router.Use(middleware.Logger())
+        r</span>outer.Use(middleware.Recovery())
+        router.Use(middleware.CORS())
 
         // Setup services
-        iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler := setupServices(cfg)
+        iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler := setupServices(cfg)
 
         // Setup routes
         router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
+        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
         router.GET("/health", handlers.HealthCheck)
 
         // Get port from environment or use default
@@ -1189,6 +1190,185 @@ const docTemplate = `{
             <span class="cov0" title="0">            "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
  </span>                       }
+                    }
+                }
+            }
+        },
+        "/api/v1/rdb/create": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new database instance with the specified type and configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RDB"
+                ],
+                "summary": "Create an RDB instance",
+                "parameters": [
+                    {
+                        "description": "RDB instance creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RDBCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RDBInstanceInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rdb/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all database instances owned by the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RDB"
+                ],
+                "summary": "List RDB instances",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RDBInstanceInfo"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rdb/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a database instance by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RDB"
+                ],
+                "summary": "Delete an RDB instance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Instance ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Instance deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
                     }
                 }
             }
@@ -2470,6 +2650,139 @@ const docTemplate = `{
                 "Write",
                 "Delete"
             ]
+        },
+        "models.RDBCreateRequest": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "database": {
+                    "type": "string"
+                },
+                "environment": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
+                },
+                "preset": {
+                    "$ref": "#/definitions/models.RDBPreset"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.RDBType"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RDBVolume"
+                    }
+                }
+            }
+        },
+        "models.RDBInstanceInfo": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "database": {
+                    "type": "string"
+                },
+                "environment": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "host": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.RDBType"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RDBVolume"
+                    }
+                }
+            }
+        },
+        "models.RDBPreset": {
+            "type": "string",
+            "enum": [
+                "micro",
+                "small",
+                "medium"
+            ],
+            "x-enum-varnames": [
+                "RDBPresetMicro",
+                "RDBPresetSmall",
+                "RDBPresetMedium"
+            ]
+        },
+        "models.RDBType": {
+            "type": "string",
+            "enum": [
+                "postgresql",
+                "mysql"
+            ],
+            "x-enum-varnames": [
+                "RDBTypePostgreSQL",
+                "RDBTypeMySQL"
+            ]
+        },
+        "models.RDBVolume": {
+            "type": "object",
+            "required": [
+                "mount_path",
+                "name",
+                "size"
+            ],
+            "properties": {
+                "mount_path": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size in GB",
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
         },
         "models.Role": {
             "type": "object",
@@ -3773,7 +4086,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, config *config.Config) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, config *config.Config) {
         </span><span class="cov0" title="0">// API v1 group
         v1 := router.Group("/api/v1")
         {
@@ -3822,6 +4135,11 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
                         // Lambda routes
                         protected.POST("/lambda/execute", lambdaHandler.ExecuteLambda)
                         protected.POST("/lambda/test", lambdaHandler.TestLambda)
+
+                        // RDB routes
+                        protected.POST("/rdb/create", rdbHandler.CreateRDB)
+                        protected.GET("/rdb/list", rdbHandler.ListRDB)
+                        protected.DELETE("/rdb/:id", rdbHandler.DeleteRDB)
                 }
         }
 }

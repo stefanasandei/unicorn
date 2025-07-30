@@ -34,8 +34,9 @@ func setupTestServer() *gin.Engine {
 	computeHandler := handlers.NewComputeHandler(cfg, store)
 	storageHandler := handlers.NewStorageHandler(&stores.GORMStorageStore{}, store, cfg)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
+	rdbHandler := handlers.NewRDBHandler(cfg, store)
 	router := gin.Default()
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
 	return router
 }
 

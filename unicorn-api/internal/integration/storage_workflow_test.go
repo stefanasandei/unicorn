@@ -55,11 +55,12 @@ func setupStorageIntegrationTest(t *testing.T) (*gin.Engine, func()) {
 	computeHandler := handlers.NewComputeHandler(cfg, iamStore)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
 	secretsHandler := handlers.NewSecretsHandler(secretsStore, iamStore, cfg)
+	rdbHandler := handlers.NewRDBHandler(cfg, iamStore)
 
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
 
 	// Return cleanup function
 	cleanup := func() {

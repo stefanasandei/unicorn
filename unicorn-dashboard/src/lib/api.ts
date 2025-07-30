@@ -19,6 +19,8 @@ import {
   ApiError,
   ExecutionRequest,
   ResponseTask,
+  RDBInstanceInfo,
+  RDBCreateRequest,
 } from "@/types/api";
 
 class ApiClient {
@@ -262,6 +264,21 @@ class ApiClient {
   }> {
     const response = await this.client.get("/api/v1/debug/token");
     return response.data;
+  }
+
+  // RDB endpoints
+  async listRDB(): Promise<RDBInstanceInfo[]> {
+    const response = await this.client.get("/api/v1/rdb/list");
+    return response.data;
+  }
+
+  async createRDB(data: RDBCreateRequest): Promise<RDBInstanceInfo> {
+    const response = await this.client.post("/api/v1/rdb/create", data);
+    return response.data;
+  }
+
+  async deleteRDB(id: string): Promise<void> {
+    await this.client.delete(`/api/v1/rdb/${id}`);
   }
 }
 

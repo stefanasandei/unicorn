@@ -1,47 +1,56 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Shield, Users, Building, Plus, Edit, Trash2 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { Role, Organization } from '@/types/api';
+import React, { useEffect, useState } from "react";
+import { Layout } from "@/components/Layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Shield, Users, Building, Plus, Edit, Trash2 } from "lucide-react";
+import { apiClient } from "@/lib/api";
+import { Role, Organization } from "@/types/api";
 
 export default function IAMPage() {
   const [roles, setRoles] = useState<Role[]>([]);
-  const [organization, setOrganization] = useState<{ organization_name: string; users: any[] } | null>(null);
+  const [organization, setOrganization] = useState<{
+    organization_name: string;
+    users: any[];
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Form states
-  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleName, setNewRoleName] = useState("");
   const [newRolePermissions, setNewRolePermissions] = useState<number[]>([]);
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [selectedRoleId, setSelectedRoleId] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -57,7 +66,7 @@ export default function IAMPage() {
       setRoles(rolesData.roles);
       setOrganization(orgData);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch IAM data');
+      setError(err.response?.data?.error || "Failed to fetch IAM data");
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +74,7 @@ export default function IAMPage() {
 
   const handleCreateRole = async () => {
     if (!newRoleName.trim()) {
-      setError('Role name is required');
+      setError("Role name is required");
       return;
     }
 
@@ -74,43 +83,48 @@ export default function IAMPage() {
         name: newRoleName,
         permissions: newRolePermissions,
       });
-      setNewRoleName('');
+      setNewRoleName("");
       setNewRolePermissions([]);
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create role');
+      setError(err.response?.data?.error || "Failed to create role");
     }
   };
 
   const handleCreateUser = async () => {
-    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim() || !selectedRoleId) {
-      setError('All fields are required');
+    if (
+      !newUserName.trim() ||
+      !newUserEmail.trim() ||
+      !newUserPassword.trim() ||
+      !selectedRoleId
+    ) {
+      setError("All fields are required");
       return;
     }
 
     try {
       // In a real implementation, you'd need the organization ID
-      const orgId = 'placeholder-org-id';
+      const orgId = "placeholder-org-id";
       await apiClient.createUser(orgId, {
         name: newUserName,
         email: newUserEmail,
         password: newUserPassword,
         role_id: selectedRoleId,
       });
-      setNewUserName('');
-      setNewUserEmail('');
-      setNewUserPassword('');
-      setSelectedRoleId('');
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setSelectedRoleId("");
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create user');
+      setError(err.response?.data?.error || "Failed to create user");
     }
   };
 
   const permissions = [
-    { id: 0, name: 'Read', description: 'View resources' },
-    { id: 1, name: 'Write', description: 'Create and modify resources' },
-    { id: 2, name: 'Delete', description: 'Delete resources' },
+    { id: 0, name: "Read", description: "View resources" },
+    { id: 1, name: "Write", description: "Create and modify resources" },
+    { id: 2, name: "Delete", description: "Delete resources" },
   ];
 
   if (isLoading) {
@@ -127,7 +141,9 @@ export default function IAMPage() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Identity & Access Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Identity & Access Management
+          </h1>
           <p className="text-gray-600">
             Manage roles, users, and permissions for your organization
           </p>
@@ -149,7 +165,10 @@ export default function IAMPage() {
               <Users className="h-4 w-4" />
               Users
             </TabsTrigger>
-            <TabsTrigger value="organization" className="flex items-center gap-2">
+            <TabsTrigger
+              value="organization"
+              className="flex items-center gap-2"
+            >
               <Building className="h-4 w-4" />
               Organization
             </TabsTrigger>
@@ -193,20 +212,33 @@ export default function IAMPage() {
                           <Label>Permissions</Label>
                           <div className="space-y-2 mt-2">
                             {permissions.map((permission) => (
-                              <label key={permission.id} className="flex items-center space-x-2">
+                              <label
+                                key={permission.id}
+                                className="flex items-center space-x-2"
+                              >
                                 <input
                                   type="checkbox"
-                                  checked={newRolePermissions.includes(permission.id)}
+                                  checked={newRolePermissions.includes(
+                                    permission.id
+                                  )}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setNewRolePermissions([...newRolePermissions, permission.id]);
+                                      setNewRolePermissions([
+                                        ...newRolePermissions,
+                                        permission.id,
+                                      ]);
                                     } else {
-                                      setNewRolePermissions(newRolePermissions.filter(id => id !== permission.id));
+                                      setNewRolePermissions(
+                                        newRolePermissions.filter(
+                                          (id) => id !== permission.id
+                                        )
+                                      );
                                     }
                                   }}
                                 />
                                 <span className="text-sm">
-                                  <strong>{permission.name}</strong> - {permission.description}
+                                  <strong>{permission.name}</strong> -{" "}
+                                  {permission.description}
                                 </span>
                               </label>
                             ))}
@@ -233,11 +265,16 @@ export default function IAMPage() {
                   <TableBody>
                     {roles.map((role) => (
                       <TableRow key={role.id}>
-                        <TableCell className="font-medium">{role.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {role.name}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {role.permissions.map((permission) => (
-                              <Badge key={permission.id} variant="secondary">
+                              <Badge
+                                key={`perm:${permission.id}`}
+                                variant="secondary"
+                              >
                                 {permission.name}
                               </Badge>
                             ))}
@@ -355,7 +392,9 @@ export default function IAMPage() {
                     <TableBody>
                       {organization.users.map((user: any) => (
                         <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell className="font-medium">
+                            {user.name}
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">{user.role_id}</Badge>
                           </TableCell>
@@ -390,12 +429,18 @@ export default function IAMPage() {
                 {organization && (
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-medium text-gray-900">Organization Name</h3>
-                      <p className="text-gray-600">{organization.organization_name}</p>
+                      <h3 className="font-medium text-gray-900">
+                        Organization Name
+                      </h3>
+                      <p className="text-gray-600">
+                        {organization.organization_name}
+                      </p>
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">Total Users</h3>
-                      <p className="text-gray-600">{organization.users.length}</p>
+                      <p className="text-gray-600">
+                        {organization.users.length}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -406,4 +451,4 @@ export default function IAMPage() {
       </div>
     </Layout>
   );
-} 
+}

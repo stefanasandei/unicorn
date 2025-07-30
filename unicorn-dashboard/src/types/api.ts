@@ -195,6 +195,42 @@ export interface ApiError {
   timestamp: string;
 }
 
+// RDB Types
+export type RDBType = "postgresql" | "mysql";
+export type RDBPreset = "micro" | "small" | "medium";
+
+export interface RDBVolume {
+  name: string;
+  size: number; // in MB
+}
+
+export interface RDBCreateRequest {
+  name?: string;
+  type: RDBType;
+  preset?: RDBPreset;
+  environment?: Record<string, string>;
+  volumes?: RDBVolume[];
+  port?: string;
+  database?: string;
+  username?: string;
+  password?: string;
+}
+
+export interface RDBInstanceInfo {
+  id: string;
+  name: string;
+  type: RDBType;
+  status: string;
+  port: string;
+  host: string;
+  database: string;
+  username: string;
+  volumes: RDBVolume[];
+  environment: Record<string, string>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: string;
   name: string;
