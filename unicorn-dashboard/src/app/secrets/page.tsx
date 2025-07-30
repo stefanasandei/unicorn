@@ -60,6 +60,12 @@ export default function SecretsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [showValues, setShowValues] = useState<Record<string, boolean>>({});
+  const [revealedSecrets, setRevealedSecrets] = useState<
+    Record<string, string>
+  >({});
+  const [loadingSecrets, setLoadingSecrets] = useState<Record<string, boolean>>(
+    {}
+  );
   const [copiedSecret, setCopiedSecret] = useState<string | null>(null);
 
   // Form states
@@ -264,11 +270,57 @@ export default function SecretsPage() {
     }
   };
 
-  const toggleSecretValue = (secretId: string) => {
-    setShowValues((prev) => ({
-      ...prev,
-      [secretId]: !prev[secretId],
-    }));
+  const toggleSecretValue = async (secretId: string) => {
+    const isCurrentlyShown = showValues[secretId];
+
+    if (isCurrentlyShown) {
+      // Hide the secret
+      setShowValues((prev) => ({
+        ...prev,
+        [secretId]: false,
+      }));
+      setRevealedSecrets((prev) => {
+        const newState = { ...prev };
+        delete newState[secretId];
+        return newState;
+      });
+    } else {
+      // Show the secret - fetch the actual value
+      try {
+        setLoadingSecrets((prev) => ({
+          ...prev,
+          [secretId]: true,
+        }));
+
+        const secret = await apiClient.getSecret(secretId);
+        setRevealedSecrets((prev) => ({
+          ...prev,
+          [secretId]: secret.value,
+        }));
+        setShowValues((prev) => ({
+          ...prev,
+          [secretId]: true,
+        }));
+      } catch (err: unknown) {
+        const errorMsg =
+          (err as any)?.response?.data?.message ||
+          (err as any)?.response?.data?.details ||
+          "Failed to reveal secret";
+        setErrorMessage(errorMsg);
+        setShowErrorDialog(true);
+
+        // Reset the toggle if there was an error
+        setShowValues((prev) => ({
+          ...prev,
+          [secretId]: false,
+        }));
+      } finally {
+        setLoadingSecrets((prev) => ({
+          ...prev,
+          [secretId]: false,
+        }));
+      }
+    }
   };
 
   const openEditDialog = (secret: Secret) => {
@@ -354,14 +406,21 @@ export default function SecretsPage() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <span className="font-mono text-sm">
-                          {showValues[secret.id] ? "••••••••" : "••••••••"}
+                          {loadingSecrets[secret.id]
+                            ? "Loading..."
+                            : showValues[secret.id]
+                            ? revealedSecrets[secret.id] || "••••••••"
+                            : "••••••••"}
                         </span>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleSecretValue(secret.id)}
+                          disabled={loadingSecrets[secret.id]}
                         >
-                          {showValues[secret.id] ? (
+                          {loadingSecrets[secret.id] ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          ) : showValues[secret.id] ? (
                             <EyeOff className="h-4 w-4" />
                           ) : (
                             <Eye className="h-4 w-4" />
