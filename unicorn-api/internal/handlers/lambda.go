@@ -3,14 +3,15 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
+	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 )
@@ -171,12 +172,11 @@ func (h *LambdaHandler) TestLambda(c *gin.Context) {
 
 // Helpers
 func (h *LambdaHandler) getClaims(c *gin.Context) (*auth.Claims, error) {
-	token := c.GetHeader("Authorization")
-	if token == "" {
-		token, _ = c.Cookie("token")
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
+		return nil, fmt.Errorf("authentication required")
 	}
-	token = strings.TrimPrefix(token, "Bearer ")
-	return auth.ValidateToken(token, h.Config)
+	return claims, nil
 }
 
 func (h *LambdaHandler) hasPermission(claims *auth.Claims, resource string, perm int) bool {

@@ -47,7 +47,7 @@ func setupIntegrationTest(t *testing.T) (*gin.Engine, *stores.GORMIAMStore, func
 	// Setup router
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	routes.SetupRoutes(router, handler, storageHandler, computeHandler, lambdaHandler, secretsHandler)
+	routes.SetupRoutes(router, handler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
 
 	// Return cleanup function
 	cleanup := func() {
@@ -283,27 +283,8 @@ func TestFullIAMWorkflow(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &roleResponse)
 		require.NoError(t, err)
 
-		// Now assign this role to the regular user
-		assignRequest := handlers.AssignRoleRequest{
-			AccountID: regularUserID,
-			RoleID:    roleResponse.Role.ID.String(),
-		}
-
-		body, _ = json.Marshal(assignRequest)
-		req = httptest.NewRequest("POST", "/api/v1/roles/assign", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-
-		w = httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var assignResponse handlers.AssignRoleResponse
-		err = json.Unmarshal(w.Body.Bytes(), &assignResponse)
-		require.NoError(t, err)
-
-		assert.Equal(t, regularUserID, assignResponse.AccountID)
-		assert.Equal(t, roleResponse.Role.ID.String(), assignResponse.RoleID)
+		// Store the role ID for later assignment
+		userRoleID = roleResponse.Role.ID.String()
 	})
 
 	// Step 5: Test authentication for all users
@@ -483,6 +464,32 @@ func TestFullIAMWorkflow(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	// Step 7: Test role assignment with authentication
+	t.Run("Assign Different Role to User", func(t *testing.T) {
+		// Now assign the user role to the regular user using admin token
+		assignRequest := handlers.AssignRoleRequest{
+			AccountID: regularUserID,
+			RoleID:    userRoleID,
+		}
+
+		body, _ := json.Marshal(assignRequest)
+		req := httptest.NewRequest("POST", "/api/v1/roles/assign", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var assignResponse handlers.AssignRoleResponse
+		err := json.Unmarshal(w.Body.Bytes(), &assignResponse)
+		require.NoError(t, err)
+
+		assert.Equal(t, regularUserID, assignResponse.AccountID)
+		assert.Equal(t, userRoleID, assignResponse.RoleID)
 	})
 
 	// Step 8: Test data persistence by verifying the data is still there

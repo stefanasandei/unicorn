@@ -1,49 +1,62 @@
 package routes
 
 import (
+	"unicorn-api/internal/config"
 	"unicorn-api/internal/handlers"
+	"unicorn-api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, config *config.Config) {
 	// API v1 group
 	v1 := router.Group("/api/v1")
 	{
-		// 1. IAM
-		v1.POST("/roles", iamHandler.CreateRole)
-		v1.GET("/roles", iamHandler.GetRoles)
-		v1.POST("/roles/assign", iamHandler.AssignRole)
-		v1.POST("/organizations", iamHandler.CreateOrganization)
-		v1.GET("/organizations", iamHandler.GetOrganizations)
-		v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
-		v1.POST("/login", iamHandler.Login)
-		v1.POST("/token/refresh", iamHandler.RefreshToken)
-		v1.GET("/token/validate", iamHandler.ValidateToken)
-		v1.GET("/debug/token", iamHandler.GetDebugToken)
+		// Public routes (no authentication required)
+		{
+			v1.POST("/login", iamHandler.Login)
+			v1.POST("/token/refresh", iamHandler.RefreshToken)
+			v1.GET("/token/validate", iamHandler.ValidateToken)
+			v1.GET("/debug/token", iamHandler.GetDebugToken)
 
-		// 2. Secrets Manager
-		v1.GET("/secrets", secretHandler.ListSecrets)
-		v1.POST("/secrets", secretHandler.CreateSecret)
-		v1.GET("/secrets/:id", secretHandler.ReadSecret)
-		v1.PUT("/secrets/:id", secretHandler.UpdateSecret)
-		v1.DELETE("/secrets/:id", secretHandler.DeleteSecret)
+			// Setup routes (no authentication required for initial setup)
+			v1.POST("/organizations", iamHandler.CreateOrganization)
+			v1.POST("/roles", iamHandler.CreateRole)
+			v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
+		}
 
-		// 3. Storage
-		v1.GET("/buckets", storageHandler.ListBucketsHandler)
-		v1.POST("/buckets", storageHandler.CreateBucketHandler)
-		v1.POST("/buckets/:bucket_id/files", storageHandler.UploadFileHandler)
-		v1.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
-		v1.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
-		v1.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+		// Protected routes (authentication required)
+		protected := v1.Group("")
+		protected.Use(middleware.AuthMiddleware(config))
+		{
+			// IAM routes
+			protected.GET("/roles", iamHandler.GetRoles)
+			protected.POST("/roles/assign", iamHandler.AssignRole)
+			protected.GET("/organizations", iamHandler.GetOrganizations)
 
-		// 4. Compute
-		v1.POST("/api/v1/compute/create", computeHandler.CreateCompute)
-		v1.GET("/api/v1/compute/list", computeHandler.ListCompute)
+			// Secrets Manager routes
+			protected.GET("/secrets", secretHandler.ListSecrets)
+			protected.POST("/secrets", secretHandler.CreateSecret)
+			protected.GET("/secrets/:id", secretHandler.ReadSecret)
+			protected.PUT("/secrets/:id", secretHandler.UpdateSecret)
+			protected.DELETE("/secrets/:id", secretHandler.DeleteSecret)
 
-		// 5. Lambda
-		v1.POST("/lambda/execute", lambdaHandler.ExecuteLambda)
-		v1.POST("/lambda/test", lambdaHandler.TestLambda)
+			// Storage routes
+			protected.GET("/buckets", storageHandler.ListBucketsHandler)
+			protected.POST("/buckets", storageHandler.CreateBucketHandler)
+			protected.POST("/buckets/:bucket_id/files", storageHandler.UploadFileHandler)
+			protected.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
+			protected.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
+			protected.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+
+			// Compute routes
+			protected.POST("/compute/create", computeHandler.CreateCompute)
+			protected.GET("/compute/list", computeHandler.ListCompute)
+
+			// Lambda routes
+			protected.POST("/lambda/execute", lambdaHandler.ExecuteLambda)
+			protected.POST("/lambda/test", lambdaHandler.TestLambda)
+		}
 	}
 }

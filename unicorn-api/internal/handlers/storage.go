@@ -4,9 +4,9 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
+	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 
@@ -26,12 +26,11 @@ func NewStorageHandler(store *stores.GORMStorageStore, iamStore stores.IAMStore,
 
 // Helper to extract claims from Authorization header
 func (h *StorageHandler) getClaimsFromRequest(c *gin.Context) (*auth.Claims, error) {
-	header := c.GetHeader("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
 		return nil, models.ErrTokenInvalid
 	}
-	token := strings.TrimPrefix(header, "Bearer ")
-	return auth.ValidateToken(token, h.config)
+	return claims, nil
 }
 
 // Helper to check permission

@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
+	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 
@@ -24,12 +24,11 @@ type SecretsHandler struct {
 
 // Helper to extract claims from Authorization header
 func (h *SecretsHandler) getClaimsFromRequest(c *gin.Context) (*auth.Claims, error) {
-	header := c.GetHeader("Authorization")
-	if header == "" || !strings.HasPrefix(header, "Bearer ") {
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
 		return nil, models.ErrTokenInvalid
 	}
-	token := strings.TrimPrefix(header, "Bearer ")
-	return auth.ValidateToken(token, h.Config)
+	return claims, nil
 }
 
 // Helper to check if user has the required permission

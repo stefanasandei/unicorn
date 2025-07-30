@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -16,6 +15,7 @@ import (
 
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
+	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 )
@@ -181,12 +181,11 @@ func (h *ComputeHandler) ListCompute(c *gin.Context) {
 
 // Helpers
 func (h *ComputeHandler) getClaims(c *gin.Context) (*auth.Claims, error) {
-	token := c.GetHeader("Authorization")
-	if token == "" {
-		token, _ = c.Cookie("token")
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
+		return nil, fmt.Errorf("authentication required")
 	}
-	token = strings.TrimPrefix(token, "Bearer ")
-	return auth.ValidateToken(token, h.Config)
+	return claims, nil
 }
 
 func (h *ComputeHandler) hasPermission(claims *auth.Claims, resource string, perm int) bool {

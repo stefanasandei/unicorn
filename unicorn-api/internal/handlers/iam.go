@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
+	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 
@@ -538,14 +540,7 @@ func (h *IAMHandler) RefreshToken(c *gin.Context) {
 // @Router       /api/v1/token/validate [get]
 func (h *IAMHandler) ValidateToken(c *gin.Context) {
 	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error:      "Token required",
-			StatusCode: http.StatusBadRequest,
-			Timestamp:  time.Now(),
-		})
-		return
-	}
+	token = strings.TrimPrefix(token, "Bearer: ")
 	claims, err := auth.ValidateToken(token, h.config)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
@@ -627,24 +622,16 @@ type OrganizationUser struct {
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/roles [get]
 func (h *IAMHandler) GetRoles(c *gin.Context) {
-	token := c.GetHeader("Authorization")
-	if token == "" || len(token) < 8 || token[:7] != "Bearer " {
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Error:      "Missing or invalid Authorization header",
+			Error:      "Authentication required",
 			StatusCode: http.StatusUnauthorized,
 			Timestamp:  time.Now(),
 		})
 		return
 	}
-	claims, err := auth.ValidateToken(token[7:], h.config)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Error:      "Invalid token",
-			StatusCode: http.StatusUnauthorized,
-			Timestamp:  time.Now(),
-		})
-		return
-	}
+	
 	account, err := h.store.GetAccountByID(claims.AccountID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
@@ -678,24 +665,16 @@ func (h *IAMHandler) GetRoles(c *gin.Context) {
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/organizations [get]
 func (h *IAMHandler) GetOrganizations(c *gin.Context) {
-	token := c.GetHeader("Authorization")
-	if token == "" || len(token) < 8 || token[:7] != "Bearer " {
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Error:      "Missing or invalid Authorization header",
+			Error:      "Authentication required",
 			StatusCode: http.StatusUnauthorized,
 			Timestamp:  time.Now(),
 		})
 		return
 	}
-	claims, err := auth.ValidateToken(token[7:], h.config)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Error:      "Invalid token",
-			StatusCode: http.StatusUnauthorized,
-			Timestamp:  time.Now(),
-		})
-		return
-	}
+	
 	account, err := h.store.GetAccountByID(claims.AccountID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{

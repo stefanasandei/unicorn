@@ -118,7 +118,8 @@
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Type "Bearer" followed by a space and JWT token. Example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+// @type apiKey
+// @description "Type 'Bearer ' + your JWT token to authorize"
 package main
 
 import (
@@ -165,34 +166,34 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
         }
 
         secretsStore, err := stores.NewSecretStore("test.db")
-        if err != nil {
-                panic("failed</span><span class="cov0" title="0"> to initialize secrets store: " + err.Error())
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to initialize secrets store: " + err.Erro</span>r())
         }
-</span>
-        iamHandler := handlers.NewIAMHandler(store, cfg)
-        <span class="cov0" title="0">secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
-        storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
-        computeHandler :=</span> handlers.NewComputeHandler(cfg, store)
+
+        <span class="cov0" title="0">iamHandler := handlers.NewIAMHandler(store, cfg)
+        secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
+        storageHandler :=</span> handlers.NewStorageHandler(storageStore, store, cfg)
+        computeHandler := handlers.NewComputeHandler(cfg, store)
         lambdaHandler := handlers.NewLambdaHandler(cfg, store)
 
-        return iamH<span class="cov0" title="0">andler, storageHandler, computeHandler, lambdaHandler, secretsHandler
+        return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler
 }
 
 func main() {
-        log.Println("Starting Unicorn API...")</span><span class="cov0" title="0">
+</span>        log.Println("Starting Unicorn API...")
 
-        /</span>/ Load environment variables
+</span>        // Load environment variables
         if err := godotenv.Load(); err != nil {
-                log.Println("No .env file found, using system environment variables")
-        <span class="cov0" title="0">}
+        <span class="cov0" title="0">        log.Println("No .env file found, using system environment variables")
+        }
 
         // Initialize configuration
-        cfg := config.New()
-</span>
-        /</span>/ Set Gin mode
+</span>        cfg := config.New()
+
+</span>        // Set Gin mode
         if cfg.Environment == "production" {
-                gin.SetMode(gin.ReleaseMode)
-        <span class="cov0" title="0">}
+        <span class="cov0" title="0">        gin.SetMode(gin.ReleaseMode)
+        }
 
         // Create router
         router := gin.New()
@@ -207,21 +208,21 @@ func main() {
 
         // Setup routes
         router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler)
-        router.GET("/health", handlers.HealthCheck)
+        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
+        router.GET("/h</span><span class="cov0" title="0">ealth", handlers.HealthCheck)
 
-</span>        // Get port from environment or use default
-        p</span>ort := os.Getenv("PORT")
-        if port == "" {
-        <span class="cov0" title="0">        port = "8080"
+        /</span>/ Get port from environment or use default
+        port := os.Getenv("PORT")
+        <span class="cov0" title="0">if port == "" {
+                port = "8080"
         }
 
         log.Printf("Starting Unicorn API server on port %s", port)
         log.Printf("Version: %s, Build Time: %s", Version, BuildTime)
-        log.Printf("Environment: %s", cfg.Environment)
-        log.Printf("Swagger UI available at: http://l</span><span class="cov0" title="0">ocalhost:%s/swagger/index.html", port)
+        log.Printf("Environment: %s", cfg.Environment</span><span class="cov0" title="0">)
+        log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
 
-        /</span>/ Start server
+</span>        // Start server
         if err := router.Run(":" + port); err != nil {
                 log.Fatal("Failed to start server:", err)
         }
@@ -2491,9 +2492,9 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "Type \"Bearer\" followed by a space and JWT token. Example: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"",
+            "description": "\"Type 'Bearer: ' + your JWT token to authorize\"",
             "type": "apiKey",
-            "name": "Authorization",
+            "name": "Bearer",
             "in": "header"
         }
     }
@@ -2692,8 +2693,10 @@ func HealthCheck(c *gin.Context) {
 
 import (
         "net/http"
+        "strings"
         "unicorn-api/internal/auth"
         "unicorn-api/internal/config"
+        "unicorn-api/internal/middleware"
         "unicorn-api/internal/models"
         "unicorn-api/internal/stores"
 
@@ -2710,9 +2713,9 @@ type IAMHandler struct {
         config *config.Config
 }
 
-func NewIAMHandler(store stores.IAMStore, cfg *config.Config) *IAMHandler <span class="cov10" title="6">{
+f</span>unc NewIAMHandler(store stores.IAMStore, cfg *config.Config) *IAMHandler {
         return &amp;IAMHandler{store: store, config: cfg}
-}</span>
+}
 
 // --- Request/Response structures ---
 
@@ -2917,38 +2920,38 @@ type ErrorResponse struct {
 // @Failure      400   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/roles [post]
-func (h *IAMHandler) CreateRole(c *gin.Context) <span class="cov6" title="3">{
+func (h *IAMHandler) CreateRole(c *gin.Context</span><span class="cov4" title="2">) {
         var req CreateRoleRequest
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov4" title="2">{
+        if err := c.ShouldBindJSON(&amp;req); err != nil {
                 c.JSON(http.StatusBadRequest, ErrorResponse{
                         Error:      "Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
-                })
+                </span>})
                 return
-        }</span>
+        <span class="cov1" title="1">}
 
-        <span class="cov1" title="1">role := &amp;models.Role{
+        role := &amp;models.Role{
                 ID:          uuid.New(),
                 CreatedAt:   time.Now(),
                 UpdatedAt:   time.Now(),
                 Name:        req.Name,
                 Permissions: req.Permissions,
-        }
-        if err := h.store.CreateRole(role); err != nil </span><span class="cov0" title="0">{
+</span>        }
+        if err := h.store.CreateRole(role); err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
                         Error:      err.Error(),
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
-                })
+                </span>})
                 return
-        }</span>
+        <span class="cov1" title="1">}
 
-        <span class="cov1" title="1">c.JSON(http.StatusCreated, CreateRoleResponse{
-                Role:    *role,
+        c.JSON(http.StatusCreated, CreateRoleResponse{
+                R</span>ole:    *role,
                 Message: "Role created successfully",
-        })</span>
+        })
 }
 
 // AssignRole godoc
@@ -2962,30 +2965,30 @@ func (h *IAMHandler) CreateRole(c *gin.Context) <span class="cov6" title="3">{
 // @Failure      400   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/roles/assign [post]
-func (h *IAMHandler) AssignRole(c *gin.Context) <span class="cov6" title="3">{
+func (h *IAMHandler) AssignRole(c *gin.Context</span><span class="cov0" title="0">) {
         var req AssignRoleRequest
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+        if err := c.ShouldBindJSON(&amp;req); err != nil {
                 c.JSON(http.StatusBadRequest, ErrorResponse{
                         Error:      "Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
-                })
-                return
-        }</span>
-        <span class="cov6" title="3">if err := h.store.AssignRole(req.AccountID, req.RoleID); err != nil </span><span class="cov4" title="2">{
+                </span>})
+        <span class="cov6" title="3">        return
+</span>        }
+        if err := h.store.AssignRole(req.AccountID, req.RoleID); err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
                         Error:      err.Error(),
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
-                })
-                return
-        }</span>
-        <span class="cov1" title="1">c.JSON(http.StatusOK, AssignRoleResponse{
+                </span>})
+        <span class="cov1" title="1">        return
+        }
+        c.JSON(http.StatusOK, AssignRoleResponse{
                 Message:   "Role assigned successfully",
-                AccountID: req.AccountID,
+                A</span>ccountID: req.AccountID,
                 RoleID:    req.RoleID,
-        })</span>
+        })
 }
 
 // CreateOrganization godoc
@@ -2999,35 +3002,35 @@ func (h *IAMHandler) AssignRole(c *gin.Context) <span class="cov6" title="3">{
 // @Failure      400   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/organizations [post]
-func (h *IAMHandler) CreateOrganization(c *gin.Context) <span class="cov4" title="2">{
+func (h *IAMHandler) CreateOrganization(c *gin</span><span class="cov1" title="1">.Context) {
         var req CreateOrganizationRequest
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov1" title="1">{
+        if err := c.ShouldBindJSON(&amp;req); err != nil {
                 c.JSON(http.StatusBadRequest, ErrorResponse{
                         Error:      "Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
-                })
-                return
-        }</span>
-        <span class="cov1" title="1">org := &amp;models.Organization{
+                </span>})
+        <span class="cov1" title="1">        return
+        }
+        org := &amp;models.Organization{
                 ID:        uuid.New(),
                 CreatedAt: time.Now(),
                 UpdatedAt: time.Now(),
                 Name:      req.Name,
-        }
-        if err := h.store.CreateOrganization(org); err != nil </span><span class="cov0" title="0">{
+</span>        }
+        if err := h.store.CreateOrganization(org); err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
                         Error:      err.Error(),
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
-                })
-                return
-        }</span>
-        <span class="cov1" title="1">c.JSON(http.StatusCreated, CreateOrganizationResponse{
-                Organization: *org,
+                </span>})
+        <span class="cov1" title="1">        return
+        }
+        c.JSON(http.StatusCreated, CreateOrganizationResponse{
+                O</span>rganization: *org,
                 Message:      "Organization created successfully",
-        })</span>
+        })
 }
 
 // --- User-related Handler functions ---
@@ -3044,31 +3047,31 @@ func (h *IAMHandler) CreateOrganization(c *gin.Context) <span class="cov4" title
 // @Failure      400   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/organizations/{org_id}/users [post]
-func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3">{
+func (h *IAMHandler) CreateUserInOrg(c *gin.Context) {
         orgID := c.Param("org_id")
 
-        var req CreateUserRequest
-        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov4" title="2">{
+</span>        var req CreateUserRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil {
                 c.JSON(http.StatusBadRequest, ErrorResponse{
                         Error:      "Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
-                })
+                </span>})
                 return
-        }</span>
+        <span class="cov1" title="1">}
 
-        <span class="cov1" title="1">hashed, err := auth.HashPassword(req.Password)
-        if err != nil </span><span class="cov0" title="0">{
+</span>        hashed, err := auth.HashPassword(req.Password)
+        if err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
                         Error:      "Failed to hash password",
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
-                })
+                </span>})
                 return
-        }</span>
+        <span class="cov1" title="1">}
 
-        <span class="cov1" title="1">account := &amp;models.Account{
+        account := &amp;models.Account{
                 ID:             uuid.New(),
                 CreatedAt:      time.Now(),
                 UpdatedAt:      time.Now(),
@@ -3078,19 +3081,19 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3
                 PasswordHash:   hashed,
                 OrganizationID: uuid.MustParse(orgID),
                 RoleID:         uuid.MustParse(req.RoleID),
-        }
-        if err := h.store.CreateAccount(account); err != nil </span><span class="cov0" title="0">{
+</span>        }
+        if err := h.store.CreateAccount(account); err != nil {
                 if err == models.ErrDuplicateEmail {
                         c.JSON(http.StatusInternalServerError, ErrorResponse{
                                 Error:      "Email already exists",
                                 StatusCode: http.StatusInternalServerError,
-                                Timestamp:  time.Now(),
-                        })
-                </span>        return
-        <span class="cov1" title="1">        }
-                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                </span>                Timestamp:  time.Now(),
+        <span class="cov1" title="1">                })
+                        return
+                }
+                c</span>.JSON(http.StatusInternalServerError, ErrorResponse{
                         Error:      err.Error(),
-                        </span>StatusCode: http.StatusInternalServerError,
+                        StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
                 })
                 return
@@ -3103,55 +3106,55 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3
 
 // Login godoc
 // @Summary      Login
-// @Description  Authenticate a user and return a JWT token
+// @Description  Authenticate a user and re<span class="cov7" title="4">turn a JWT token
 // @Tags         IAM
 // @Accept       json
-// @Produce      json
-// @Param        credentials  body  LoginReque</span><span class="cov1" title="1">st  true  "Login credentials"
+</span>// @Produce      json
+// @Param        credentials  body  LoginRequest  true  "Login credentials"
 // @Success      200   {object}  LoginResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/login [post]
-func (h *IAMHandler) Login(c *gin.Context) {
-        var req LoginRequest
-        i</span>f err := c.ShouldBindJSON(&amp;req); err != nil {
-        <span class="cov6" title="3">        c.JSON(http.StatusBadRequest, ErrorResponse{
-                        Error:      </span><span class="cov1" title="1">"Invalid request",
+fu</span>nc (h *IAMHandler) Login(c *gin.Context) {
+        <span class="cov6" title="3">var req LoginRequest
+        if err := c.Sh</span><span class="cov1" title="1">ouldBindJSON(&amp;req); err != nil {
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
                 })
-                return
-        }
-        a</span>ccount, err := h.store.GetAccountByEmail(req.Email)
-        <span class="cov4" title="2">if err != nil {
-</span>                c.JSON(http.StatusUnauthorized, ErrorResponse{
-                        Error:      "Invalid credentials",
-                        StatusCode: http.StatusUnauthorized,
-                        Timestamp:  time.Now(),
-                })
-                return
-        }</span>
-        <span class="cov1" title="1">if !auth.CheckPasswordHash(req.Password, account.PasswordHash) {
-                c.JSON(http.S</span><span class="cov0" title="0">tatusUnauthorized, ErrorResponse{
-                        Error:      "Invalid credentials",
-                        StatusCode: http.StatusUnauthorized,
-                        Timestamp:  time.Now(),
-                })
-                return
-        }
-        t</span>oken, err := auth.GenerateToken(account.ID.String(), account.RoleID.String(), h.config)
+                </span>return
+        <span class="cov4" title="2">}
+</span>        account, err := h.store.GetAccountByEmail(req.Email)
         if err != nil {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid credentials",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                </span>})
+        <span class="cov1" title="1">        return
+        }
+</span>        if !auth.CheckPasswordHash(req.Password, account.PasswordHash) {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid credentials",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                </span>return
+        }
+        token, err := auth.GenerateToken(account.ID.String(), account.RoleID.String(), h.config)
+        <span class="cov1" title="1">if err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
-        <span class="cov1" title="1">                Error:      "Failed to generate token",
+                        Error:      "Failed to generate token",
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
                 })
                 return
         }
-
-        //</span> Calculate expiration time (assuming 24 hours)
+</span>
+        // Calculate expiration time (assuming 24 hours)
         expiresAt := time.Now().Add(24 * time.Hour)
 
         c.JSON(http.StatusOK, LoginResponse{
@@ -3167,44 +3170,44 @@ func (h *IAMHandler) Login(c *gin.Context) {
 // @Description  Refresh an expired JWT token
 // @Tags         IAM
 // @Accept       json
-// @Produce      json
-// @Param        token  body  RefreshTokenRequ</span><span class="cov0" title="0">est  true  "Refresh token request"
+</span>// @Produce      json
+// @Param        token  body  RefreshTokenRequest  true  "Refresh token request"
 // @Success      200   {object}  RefreshTokenResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/token/refresh [post]
-func (h *IAMHandler) RefreshToken(c *gin.Context) {
-        var req RefreshTokenRequest
-        i</span>f err := c.ShouldBindJSON(&amp;req); err != nil {
-        <span class="cov0" title="0">        c.JSON(http.StatusBadRequest, ErrorResponse{
-                        Error:      </span><span class="cov0" title="0">"Invalid request",
+fu</span>nc (h *IAMHandler) RefreshToken(c *gin.Context) {
+        <span class="cov0" title="0">var req RefreshTokenRequest
+        if err := c.Sh</span><span class="cov0" title="0">ouldBindJSON(&amp;req); err != nil {
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
                         Details:    err.Error(),
                         StatusCode: http.StatusBadRequest,
                         Timestamp:  time.Now(),
                 })
-                return
-        }
-        c</span>laims, err := auth.ValidateToken(req.Token, h.config)
-        <span class="cov0" title="0">if err != nil {
-                c.JSON(http.S</span><span class="cov0" title="0">tatusUnauthorized, ErrorResponse{
+                </span>return
+        <span class="cov0" title="0">}
+        claims, err :=</span><span class="cov0" title="0"> auth.ValidateToken(req.Token, h.config)
+        if err != nil {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
                         Error:      "Invalid token",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
-                return
+                </span>return
         }
-        t</span>oken, err := auth.GenerateToken(claims.AccountID, claims.RoleID, h.config)
-        if err != nil {
+        token, err := auth.GenerateToken(claims.AccountID, claims.RoleID, h.config)
+        <span class="cov0" title="0">if err != nil {
                 c.JSON(http.StatusInternalServerError, ErrorResponse{
-        <span class="cov0" title="0">                Error:      "Failed to generate token",
+                        Error:      "Failed to generate token",
                         StatusCode: http.StatusInternalServerError,
                         Timestamp:  time.Now(),
                 })
                 return
         }
-
-        //</span> Calculate expiration time (assuming 24 hours)
+</span>
+        // Calculate expiration time (assuming 24 hours)
         expiresAt := time.Now().Add(24 * time.Hour)
 
         c.JSON(http.StatusOK, RefreshTokenResponse{
@@ -3218,39 +3221,32 @@ func (h *IAMHandler) RefreshToken(c *gin.Context) {
 // ValidateToken godoc
 // @Summary      Validate JWT token
 // @Description  Validate a JWT token and return its claims
-// @Tags         IAM
+// @Tags        </span><span class="cov1" title="1"> IAM
 // @Accept       json
-// @Produce     </span><span class="cov1" title="1"> json
+// @Produce      json
 // @Param        token  query  string  true  "JWT token"
 // @Success      200   {object}  ValidateTokenResponse
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
-// @Router       /api/v1/token/validate [get]
-func (h *IAMHandler) ValidateToken(c *gin.Context) {
-        t</span>oken := c.Query("token")
-        <span class="cov4" title="2">if token == "" {
-                c.JSON(http.S</span><span class="cov4" title="2">tatusBadRequest, ErrorResponse{
-                        Error:      "Token required",
-                        StatusCode: http.StatusBadRequest,
-                        Timestamp:  time.Now(),
-                })
-                return
-        }
-        c</span>laims, err := auth.ValidateToken(token, h.config)
-        <span class="cov0" title="0">if err != nil {
+//</span> @Router       /api/v1/token/validate [get]
+f<span class="cov4" title="2">unc (h *IAMHandler) ValidateToken(c *gin.Context) {
+        token := c.Que</span><span class="cov4" title="2">ry("token")
+        token = strings.TrimPrefix(token, "Bearer: ")
+        claims, err := auth.ValidateToken(token, h.config)
+        if err != nil {
                 c.JSON(http.StatusUnauthorized, ErrorResponse{
                         Error:      "Invalid token",
                         StatusCode: http.StatusUnauthorized,
-                        Timestamp:  time.Now(),
-                })
+                </span>        Timestamp:  time.Now(),
+        <span class="cov0" title="0">        })
                 return
         }
-        c.</span>JSON(http.StatusOK, ValidateTokenResponse{
+        c.JSON(http.StatusOK, ValidateTokenResponse{
                 Claims: TokenClaimsResponse{
                         AccountID: claims.AccountID,
                         RoleID:    claims.RoleID,
                         ExpiresAt: claims.ExpiresAt.Time,
-                },
+                }</span>,
                 Valid:   true,
                 Message: "Token is valid",
         })
@@ -3317,24 +3313,16 @@ type OrganizationUser struct {
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/roles [get]
 func (h *IAMHandler) GetRoles(c *gin.Context) {
-        token := c.GetHeader("Authorization")
-        if token == "" || len(token) &lt; 8 || token[:7] != "Bearer " {
+        claims, exists := middleware.GetClaimsFromContext(c)
+        if !exists {
                 c.JSON(http.StatusUnauthorized, ErrorResponse{
-                        Error:      "Missing or invalid Authorization header",
+                        Error:      "Authentication required",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
                 return
         }
-        claims, err := auth.ValidateToken(token[7:], h.config)
-        if err != nil {
-                c.JSON(http.StatusUnauthorized, ErrorResponse{
-                        Error:      "Invalid token",
-                        StatusCode: http.StatusUnauthorized,
-                        Timestamp:  time.Now(),
-                })
-                return
-        }
+        
         account, err := h.store.GetAccountByID(claims.AccountID)
         if err != nil {
                 c.JSON(http.StatusUnauthorized, ErrorResponse{
@@ -3368,24 +3356,16 @@ func (h *IAMHandler) GetRoles(c *gin.Context) {
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/organizations [get]
 func (h *IAMHandler) GetOrganizations(c *gin.Context) {
-        token := c.GetHeader("Authorization")
-        if token == "" || len(token) &lt; 8 || token[:7] != "Bearer " {
+        claims, exists := middleware.GetClaimsFromContext(c)
+        if !exists {
                 c.JSON(http.StatusUnauthorized, ErrorResponse{
-                        Error:      "Missing or invalid Authorization header",
+                        Error:      "Authentication required",
                         StatusCode: http.StatusUnauthorized,
                         Timestamp:  time.Now(),
                 })
                 return
         }
-        claims, err := auth.ValidateToken(token[7:], h.config)
-        if err != nil {
-                c.JSON(http.StatusUnauthorized, ErrorResponse{
-                        Error:      "Invalid token",
-                        StatusCode: http.StatusUnauthorized,
-                        Timestamp:  time.Now(),
-                })
-                return
-        }
+        
         account, err := h.store.GetAccountByID(claims.AccountID)
         if err != nil {
                 c.JSON(http.StatusUnauthorized, ErrorResponse{
@@ -3689,50 +3669,63 @@ type Organization struct {
 		<pre class="file" id="file10" style="display: none">package routes
 
 import (
+        "unicorn-api/internal/config"
         "unicorn-api/internal/handlers"
+        "unicorn-api/internal/middleware"
 
         "github.com/gin-gonic/gin"
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, <span class="cov0" title="0">storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler) {
-        // API v1 group
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, config *config.Config) {
+        </span><span class="cov0" title="0">// API v1 group
         v1 := router.Group("/api/v1")
-        </span><span class="cov0" title="0">{
-                // 1. IAM
-                v1.POST("/roles", iamHandler.CreateRole)
-                v1.GET("/roles", iamHandler.GetRoles)
-                v1.POST("/roles/assign", iamHandler.AssignRole)
-                v1.POST("/organizations", iamHandler.CreateOrganization)
-                v1.GET("/organizations", iamHandler.GetOrganizations)
-                v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
-                v1.POST("/login", iamHandler.Login)
-                v1.POST("/token/refresh", iamHandler.RefreshToken)
-                v1.GET("/token/validate", iamHandler.ValidateToken)
-                v1.GET("/debug/token", iamHandler.GetDebugToken)
+        {
+                // Public routes (no authentication required)
+                {
+                        v1.POST("/login", iamHandler.Login)
+                        v1.POST("/token/refresh", iamHandler.RefreshToken)
+                        v1.GET("/token/validate", iamHandler.ValidateToken)
+                        v1.GET("/debug/token", iamHandler.GetDebugToken)
 
-</span>                // 2. Secrets Manager
-                v1.GET("/secrets", secretHandler.ListSecrets)
-                v1.POST("/secrets", secretHandler.CreateSecret)
-                v1.GET("/secrets/:id", secretHandler.ReadSecret)
-                v1.PUT("/secrets/:id", secretHandler.UpdateSecret)
-                v1.DELETE("/secrets/:id", secretHandler.DeleteSecret)
+                        // Setup routes (no authentication required for initial setup)
+                        v1.POST("/organizations", iamHandler.CreateOrganization)
+                </span>        v1.POST("/roles", iamHandler.CreateRole)
+                        v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
+                }
 
-                // 3. Storage
-                v1.GET("/buckets", storageHandler.ListBucketsHandler)
-                v1.POST("/buckets", storageHandler.CreateBucketHandler)
-                v1.POST("/buckets/:bucket_id/files", storageHandler.UploadFileHandler)
-                v1.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
-                v1.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
-                v1.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+                // Protected routes (authentication required)
+                protected := v1.Group("")
+                protected.Use(middleware.AuthMiddleware(config))
+                {
+                        // IAM routes
+                        protected.GET("/roles", iamHandler.GetRoles)
+                        protected.POST("/roles/assign", iamHandler.AssignRole)
+                        protected.GET("/organizations", iamHandler.GetOrganizations)
 
-                // 4. Compute
-                v1.POST("/api/v1/compute/create", computeHandler.CreateCompute)
-                v1.GET("/api/v1/compute/list", computeHandler.ListCompute)
+                        // Secrets Manager routes
+                        protected.GET("/secrets", secretHandler.ListSecrets)
+                        protected.POST("/secrets", secretHandler.CreateSecret)
+                        protected.GET("/secrets/:id", secretHandler.ReadSecret)
+                        protected.PUT("/secrets/:id", secretHandler.UpdateSecret)
+                        protected.DELETE("/secrets/:id", secretHandler.DeleteSecret)
 
-                // 5. Lambda
-                v1.POST("/lambda/execute", lambdaHandler.ExecuteLambda)
-                v1.POST("/lambda/test", lambdaHandler.TestLambda)
+                        // Storage routes
+                        protected.GET("/buckets", storageHandler.ListBucketsHandler)
+                        protected.POST("/buckets", storageHandler.CreateBucketHandler)
+                        protected.POST("/buckets/:bucket_id/files", storageHandler.UploadFileHandler)
+                        protected.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
+                        protected.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
+                        protected.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+
+                        // Compute routes
+                        protected.POST("/compute/create", computeHandler.CreateCompute)
+                        protected.GET("/compute/list", computeHandler.ListCompute)
+
+                        // Lambda routes
+                        protected.POST("/lambda/execute", lambdaHandler.ExecuteLambda)
+                        protected.POST("/lambda/test", lambdaHandler.TestLambda)
+                }
         }
 }
 </pre>

@@ -9,6 +9,7 @@ import (
 	"unicorn-api/internal/auth"
 	"unicorn-api/internal/config"
 	"unicorn-api/internal/handlers"
+	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/stores"
 
@@ -46,13 +47,21 @@ func setupTestSecretsHandler(t *testing.T) (*handlers.SecretsHandler, *gin.Engin
 		IAMStore: iamStore,
 	}
 
-	r := gin.Default()
-	r.GET("/secrets", h.ListSecrets)
-	r.POST("/secrets", h.CreateSecret)
-	r.GET("/secrets/:id", h.ReadSecret)
-	r.PUT("/secrets/:id", h.UpdateSecret)
-	r.DELETE("/secrets/:id", h.DeleteSecret)
-	return h, r, userID, token
+	// Setup router with proper authentication middleware
+	router := gin.Default()
+
+	// Add authentication middleware to protected routes
+	protected := router.Group("/api/v1")
+	protected.Use(middleware.AuthMiddleware(cfg))
+	{
+		protected.GET("/secrets", h.ListSecrets)
+		protected.POST("/secrets", h.CreateSecret)
+		protected.GET("/secrets/:id", h.ReadSecret)
+		protected.PUT("/secrets/:id", h.UpdateSecret)
+		protected.DELETE("/secrets/:id", h.DeleteSecret)
+	}
+
+	return h, router, userID, token
 }
 
 func TestSecretsCRUD(t *testing.T) {
@@ -65,7 +74,7 @@ func TestSecretsCRUD(t *testing.T) {
 		"metadata": "{\"env\":\"test\"}",
 	}
 	b, _ := json.Marshal(body)
-	req := httptest.NewRequest("POST", "/secrets", bytes.NewReader(b))
+	req := httptest.NewRequest("POST", "/api/v1/secrets", bytes.NewReader(b))
 	req.Header.Set("Authorization", "Bearer "+token)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -75,7 +84,7 @@ func TestSecretsCRUD(t *testing.T) {
 	secretID := resp["id"].(string)
 
 	// List
-	req = httptest.NewRequest("GET", "/secrets", nil)
+	req = httptest.NewRequest("GET", "/api/v1/secrets", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -85,7 +94,7 @@ func TestSecretsCRUD(t *testing.T) {
 	require.Len(t, list, 1)
 
 	// Read
-	url := "/secrets/" + secretID
+	url := "/api/v1/secrets/" + secretID
 	req = httptest.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	w = httptest.NewRecorder()
@@ -121,7 +130,7 @@ func TestSecretsCRUD(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, w.Code)
 
 	// List after delete
-	req = httptest.NewRequest("GET", "/secrets", nil)
+	req = httptest.NewRequest("GET", "/api/v1/secrets", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)

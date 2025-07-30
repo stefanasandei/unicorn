@@ -39,7 +39,7 @@ func setupLambdaTestServer() *gin.Engine {
 	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
 
 	router := gin.Default()
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, cfg)
 	return router
 }
 
