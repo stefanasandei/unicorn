@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // GORMIAMStore implements IAMStore using GORM for SQLite
@@ -16,7 +17,9 @@ type GORMIAMStore struct {
 
 // NewGORMIAMStore creates a new GORMIAMStore
 func NewGORMIAMStore(dataSourceName string) (*GORMIAMStore, error) {
-	db, err := gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database with GORM: %w", err)
 	}
@@ -159,4 +162,8 @@ func (s *GORMIAMStore) UpdateAccount(account *models.Account) error {
 		return fmt.Errorf("account with ID '%s' not found for update", account.ID)
 	}
 	return nil
+}
+
+func (s *GORMIAMStore) DB() *gorm.DB {
+	return s.db
 }

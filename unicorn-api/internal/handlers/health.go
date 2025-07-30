@@ -51,10 +51,6 @@ func HealthCheck(c *gin.Context) {
 		Status:    "healthy",
 		Timestamp: time.Now(),
 		Version:   "1.0.0",
-		Details: map[string]interface{}{
-			"database": "connected",
-			"uptime":   "2h 30m 15s",
-		},
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -1,0 +1,2408 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>cmd: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">unicorn-api/cmd/main.go (0.0%)</option>
+				
+				<option value="file1">unicorn-api/docs/docs.go (0.0%)</option>
+				
+				<option value="file2">unicorn-api/internal/auth/token.go (0.0%)</option>
+				
+				<option value="file3">unicorn-api/internal/config/config.go (0.0%)</option>
+				
+				<option value="file4">unicorn-api/internal/handlers/health.go (0.0%)</option>
+				
+				<option value="file5">unicorn-api/internal/handlers/iam.go (66.7%)</option>
+				
+				<option value="file6">unicorn-api/internal/middleware/cors.go (0.0%)</option>
+				
+				<option value="file7">unicorn-api/internal/middleware/logger.go (0.0%)</option>
+				
+				<option value="file8">unicorn-api/internal/middleware/recovery.go (0.0%)</option>
+				
+				<option value="file9">unicorn-api/internal/models/iam.go (0.0%)</option>
+				
+				<option value="file10">unicorn-api/internal/routes/routes.go (0.0%)</option>
+				
+				<option value="file11">unicorn-api/internal/stores/iam_sqlite.go (80.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// @title           Unicorn API
+// @version         1.0
+// @description     A comprehensive RESTful API for Unicorn services providing Identity and Access Management (IAM) functionality. This API supports user authentication, role-based access control, organization management, and JWT token handling.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   Unicorn API Support
+// @contact.url    https://github.com/your-org/unicorn-api
+// @contact.email  support@unicorn-api.com
+
+// @license.name  MIT License
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token. Example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+// @tag.name auth
+// @tag.description Authentication and authorization endpoints
+
+// @tag.name users
+// @tag.description User management endpoints
+
+// @tag.name roles
+// @tag.description Role and permission management endpoints
+
+// @tag.name organizations
+// @tag.description Organization management endpoints
+
+// @tag.name health
+// @tag.description Health check and monitoring endpoints
+
+// @tag.name hello
+// @tag.description Basic connectivity test endpoints
+package main
+
+import (
+        "log"
+        "os"
+
+        "unicorn-api/internal/config"
+        "unicorn-api/internal/handlers"
+        "unicorn-api/internal/middleware"
+        "unicorn-api/internal/routes"
+        "unicorn-api/internal/stores"
+
+        "github.com/gin-gonic/gin"
+        "github.com/joho/godotenv"
+
+        _ "unicorn-api/docs" // Import the generated docs package
+
+        swaggerFiles "github.com/swaggo/files"
+        ginSwagger "github.com/swaggo/gin-swagger"
+)
+
+var (
+        Version   = "dev"
+        BuildTime = "unknown"
+)
+
+func setupServices(cfg *config.Config) *handlers.IAMHandler <span class="cov0" title="0">{
+        // setup the stores
+        store, err := stores.NewGORMIAMStore("test.db")
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to initialize IAM store: " + err.Error())</span>
+        }
+
+        <span class="cov0" title="0">iamHandler := handlers.NewIAMHandler(store, cfg)
+
+        return iamHandler</span>
+}
+
+func main() <span class="cov0" title="0">{
+        log.Println("Starting Unicorn API...")
+
+        // Load environment variables
+        if err := godotenv.Load(); err != nil </span><span class="cov0" title="0">{
+                log.Println("No .env file found, using system environment variables")
+        }</span>
+
+        // Initialize configuration
+        <span class="cov0" title="0">cfg := config.New()
+
+        // Set Gin mode
+        if cfg.Environment == "production" </span><span class="cov0" title="0">{
+                gin.SetMode(gin.ReleaseMode)
+        }</span>
+
+        // Create router
+        <span class="cov0" title="0">router := gin.New()
+
+        // Add middleware
+        router.Use(middleware.Logger())
+        router.Use(middleware.Recovery())
+        router.Use(middleware.CORS())
+
+        // setup services
+        iamHandler := setupServices(cfg)
+
+        // Setup routes
+        router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+        routes.SetupRoutes(router, iamHandler)
+        router.GET("/health", handlers.HealthCheck)
+
+        // Get port from environment or use default
+        port := os.Getenv("PORT")
+        if port == "" </span><span class="cov0" title="0">{
+                port = "8080"
+        }</span>
+
+        <span class="cov0" title="0">log.Printf("Starting Unicorn API server on port %s", port)
+        log.Printf("Version: %s, Build Time: %s", Version, BuildTime)
+        log.Printf("Environment: %s", cfg.Environment)
+        log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
+
+        // Start server
+        if err := router.Run(":" + port); err != nil </span><span class="cov0" title="0">{
+                log.Fatal("Failed to start server:", err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Package docs Code generated by swaggo/swag. DO NOT EDIT
+package docs
+
+import "github.com/swaggo/swag"
+
+const docTemplate = `{
+    "schemes": {{ marshal .Schemes }},
+    "swagger": "2.0",
+    "info": {
+        "description": "{{escape .Description}}",
+        "title": "{{.Title}}",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Unicorn API Support",
+            "url": "https://github.com/your-org/unicorn-api",
+            "email": "support@unicorn-api.com"
+        },
+        "license": {
+            "name": "MIT License",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "{{.Version}}"
+    },
+    "host": "{{.Host}}",
+    "basePath": "{{.BasePath}}",
+    "paths": {
+        "/api/v1/hello": {
+            "get": {
+                "description": "Returns a hello world message. This endpoint is useful for testing basic connectivity to the API.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hello"
+                ],
+                "summary": "Hello endpoint",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.HelloResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/login": {
+            "post": {
+                "description": "Authenticate a user and return a JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations": {
+            "post": {
+                "description": "Create a new organization that can contain multiple accounts",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Create a new organization",
+                "parameters": [
+                    {
+                        "description": "Organization information",
+                        "name": "organization",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateOrganizationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organizations/{org_id}/users": {
+            "post": {
+                "description": "Create a user account in a specific organization with the specified role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a user in an organization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization ID",
+                        "name": "org_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User information",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/roles": {
+            "post": {
+                "description": "Create a new role with specified permissions. Permissions are: 0=Read, 1=Write, 2=Delete",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create a new role",
+                "parameters": [
+                    {
+                        "description": "Role information",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateRoleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/roles/assign": {
+            "post": {
+                "description": "Assign a role to a user or bot account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Assign a role to an account",
+                "parameters": [
+                    {
+                        "description": "Role assignment information",
+                        "name": "assignment",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AssignRoleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/token/refresh": {
+            "post": {
+                "description": "Refresh an expired JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh JWT token",
+                "parameters": [
+                    {
+                        "description": "Refresh token request",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RefreshTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/token/validate": {
+            "get": {
+                "description": "Validate a JWT token and return its claims",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Validate JWT token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ValidateTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Get the health status of the API. This endpoint can be used by load balancers and monitoring systems to verify the API is running properly.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.HealthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.AssignRoleRequest": {
+            "type": "object",
+            "required": [
+                "account_id",
+                "role_id"
+            ],
+            "properties": {
+                "account_id": {
+                    "description": "The ID of the account to assign the role to\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "role_id": {
+                    "description": "The ID of the role to assign\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.AssignRoleResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "description": "The ID of the account\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Success message\nexample: Role assigned successfully",
+                    "type": "string"
+                },
+                "role_id": {
+                    "description": "The ID of the role\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateOrganizationRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "description": "The name of the organization\nexample: Acme Corporation",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateOrganizationResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Success message\nexample: Organization created successfully",
+                    "type": "string"
+                },
+                "organization": {
+                    "description": "The created organization",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    ]
+                }
+            }
+        },
+        "handlers.CreateRoleRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "permissions"
+            ],
+            "properties": {
+                "name": {
+                    "description": "The name of the role (e.g., admin, user, moderator)\nexample: admin",
+                    "type": "string"
+                },
+                "permissions": {
+                    "description": "The permissions assigned to the role (0=Read, 1=Write, 2=Delete)\nexample: [0,1,2]",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Permission"
+                    }
+                }
+            }
+        },
+        "handlers.CreateRoleResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Success message\nexample: Role created successfully",
+                    "type": "string"
+                },
+                "role": {
+                    "description": "The created role",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Role"
+                        }
+                    ]
+                }
+            }
+        },
+        "handlers.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password",
+                "role_id"
+            ],
+            "properties": {
+                "email": {
+                    "description": "The email address of the user (must be unique)\nexample: john.doe@example.com",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The display name of the user\nexample: John Doe",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "The password for the user account (will be hashed)\nexample: securePassword123",
+                    "type": "string",
+                    "minLength": 8
+                },
+                "role_id": {
+                    "description": "The ID of the role to assign to the user\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateUserResponse": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "description": "The created user account",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Account"
+                        }
+                    ]
+                },
+                "message": {
+                    "description": "Success message\nexample: User created successfully",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "description": "Additional error details\nexample: Field 'email' is required",
+                    "type": "string"
+                },
+                "error": {
+                    "description": "The error message\nexample: Invalid request",
+                    "type": "string"
+                },
+                "status_code": {
+                    "description": "The HTTP status code\nexample: 400",
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "description": "The timestamp when the error occurred\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "description": "Additional health information\nexample: {\"database\":\"connected\",\"redis\":\"connected\"}",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "status": {
+                    "description": "The health status of the API\nexample: healthy",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "The timestamp when the health check was performed\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "The version of the API\nexample: 1.0.0",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.HelloResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "The greeting message\nexample: Hello, World!",
+                    "type": "string"
+                },
+                "timestamp": {
+                    "description": "The timestamp when the request was processed\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "The API version\nexample: 1.0.0",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "description": "The email address of the user\nexample: john.doe@example.com",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "The password for the user account\nexample: securePassword123",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "description": "The expiration time of the token\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Success message\nexample: Login successful",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "The JWT token for authentication\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature",
+                    "type": "string"
+                },
+                "token_type": {
+                    "description": "The type of token\nexample: Bearer",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "description": "The JWT token to refresh\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.RefreshTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "description": "The expiration time of the token\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Success message\nexample: Token refreshed successfully",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "The new JWT token\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature",
+                    "type": "string"
+                },
+                "token_type": {
+                    "description": "The type of token\nexample: Bearer",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.TokenClaimsResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "description": "The account ID\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "The token expiration time\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "role_id": {
+                    "description": "The role ID\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ValidateTokenResponse": {
+            "type": "object",
+            "properties": {
+                "claims": {
+                    "description": "The token claims",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/handlers.TokenClaimsResponse"
+                        }
+                    ]
+                },
+                "message": {
+                    "description": "Success message\nexample: Token is valid",
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Whether the token is valid\nexample: true",
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.Account": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "The creation timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "The email address (required for user accounts, unique)\nexample: john.doe@example.com",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique ID of the account\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "last_login_at": {
+                    "description": "Token related (JWT) - last successful login timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The display name of the account\nexample: John Doe",
+                    "type": "string"
+                },
+                "organization": {
+                    "description": "GORM Associations\nThe organization this account belongs to",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    ]
+                },
+                "organization_id": {
+                    "description": "Foreign Keys\nThe ID of the organization this account belongs to\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "role": {
+                    "description": "The role assigned to this account",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Role"
+                        }
+                    ]
+                },
+                "role_id": {
+                    "description": "The ID of the role assigned to this account\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The type of account (user or bot)\nexample: user",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AccountType"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "description": "The last update timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                }
+            }
+        },
+        "models.AccountType": {
+            "type": "string",
+            "enum": [
+                "user",
+                "bot"
+            ],
+            "x-enum-comments": {
+                "AccountTypeBot": "Automated service account",
+                "AccountTypeUser": "Human user account"
+            },
+            "x-enum-descriptions": [
+                "Human user account",
+                "Automated service account"
+            ],
+            "x-enum-varnames": [
+                "AccountTypeUser",
+                "AccountTypeBot"
+            ]
+        },
+        "models.Organization": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "description": "An organization can have many accounts\nexample: [{\"id\":\"123e4567-e89b-12d3-a456-426614174000\",\"name\":\"John Doe\",\"email\":\"john@acme.com\",\"type\":\"user\"}]",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Account"
+                    }
+                },
+                "created_at": {
+                    "description": "The creation timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique ID of the organization\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the organization (unique)\nexample: Acme Corporation",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Permission": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-comments": {
+                "Delete": "Delete permission (2)",
+                "Read": "Read permission (0)",
+                "Write": "Write permission (1)"
+            },
+            "x-enum-descriptions": [
+                "Read permission (0)",
+                "Write permission (1)",
+                "Delete permission (2)"
+            ],
+            "x-enum-varnames": [
+                "Read",
+                "Write",
+                "Delete"
+            ]
+        },
+        "models.Role": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "The creation timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique ID of the role\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the role (e.g., admin, user, moderator)\nexample: admin",
+                    "type": "string"
+                },
+                "permissions": {
+                    "description": "The permissions assigned to the role (0=Read, 1=Write, 2=Delete)\nexample: [0,1,2]",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Permission"
+                    }
+                },
+                "updated_at": {
+                    "description": "The last update timestamp\nexample: 2024-01-01T12:00:00Z",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token. Example: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    },
+    "tags": [
+        {
+            "description": "Authentication and authorization endpoints",
+            "name": "auth"
+        },
+        {
+            "description": "User management endpoints",
+            "name": "users"
+        },
+        {
+            "description": "Role and permission management endpoints",
+            "name": "roles"
+        },
+        {
+            "description": "Organization management endpoints",
+            "name": "organizations"
+        },
+        {
+            "description": "Health check and monitoring endpoints",
+            "name": "health"
+        },
+        {
+            "description": "Basic connectivity test endpoints",
+            "name": "hello"
+        }
+    ]
+}`
+
+// SwaggerInfo holds exported Swagger Info so clients can modify it
+var SwaggerInfo = &amp;swag.Spec{
+        Version:          "1.0",
+        Host:             "localhost:8080",
+        BasePath:         "/",
+        Schemes:          []string{},
+        Title:            "Unicorn API",
+        Description:      "A comprehensive RESTful API for Unicorn services providing Identity and Access Management (IAM) functionality. This API supports user authentication, role-based access control, organization management, and JWT token handling.",
+        InfoInstanceName: "swagger",
+        SwaggerTemplate:  docTemplate,
+        LeftDelim:        "{{",
+        RightDelim:       "}}",
+}
+
+func init() <span class="cov0" title="0">{
+        swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package auth
+
+import (
+        "fmt"
+        "time"
+        "unicorn-api/internal/config"
+        "unicorn-api/internal/models"
+
+        "github.com/golang-jwt/jwt/v4"
+        "golang.org/x/crypto/bcrypt"
+)
+
+// claims represents the claims in our JWT token.
+type Claims struct {
+        AccountID string `json:"account_id"`
+        RoleID    string `json:"role_id"`
+        jwt.RegisteredClaims
+}
+
+// creates a new JWT token for a given account.
+func GenerateToken(accountID, roleID string, cfg *config.Config) (string, error) <span class="cov0" title="0">{
+        expirationTime := time.Now().Add(cfg.TokenExpiration)
+        claims := &amp;Claims{
+                AccountID: accountID,
+                RoleID:    roleID,
+                RegisteredClaims: jwt.RegisteredClaims{
+                        ExpiresAt: jwt.NewNumericDate(expirationTime),
+                        IssuedAt:  jwt.NewNumericDate(time.Now()),
+                        NotBefore: jwt.NewNumericDate(time.Now()),
+                },
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+        tokenString, err := token.SignedString([]byte(cfg.JWTSecret))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to sign token: %w", err)
+        }</span>
+        <span class="cov0" title="0">return tokenString, nil</span>
+}
+
+// parses and validates a JWT token.
+func ValidateToken(tokenString string, cfg *config.Config) (*Claims, error) <span class="cov0" title="0">{
+        claims := &amp;Claims{}
+
+        token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) </span><span class="cov0" title="0">{
+                if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+                }</span>
+                <span class="cov0" title="0">return []byte(cfg.JWTSecret), nil</span>
+        })
+
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid token: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !token.Valid </span><span class="cov0" title="0">{
+                return nil, models.ErrTokenInvalid
+        }</span>
+
+        <span class="cov0" title="0">return claims, nil</span>
+}
+
+// hashes a plain-text password using bcrypt.
+func HashPassword(password string) (string, error) <span class="cov0" title="0">{
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to hash password: %w", err)
+        }</span>
+        <span class="cov0" title="0">return string(hashedPassword), nil</span>
+}
+
+// compares a plain-text password with its hashed version.
+func CheckPasswordHash(password, hash string) bool <span class="cov0" title="0">{
+        err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+        return err == nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package config
+
+import (
+        "os"
+        "time"
+)
+
+// Config holds all configuration for the application
+type Config struct {
+        Environment string
+        Port        string
+        LogLevel    string
+
+        JWTSecret       string
+        TokenExpiration time.Duration
+}
+
+// New creates a new Config instance
+func New() *Config <span class="cov0" title="0">{
+        return &amp;Config{
+                Environment: getEnv("ENVIRONMENT", "development"),
+                Port:        getEnv("PORT", "8080"),
+                LogLevel:    getEnv("LOG_LEVEL", "info"),
+
+                TokenExpiration: time.Duration(time.Hour * 24),
+                JWTSecret:       getEnv("JWTSecret", "lmao"),
+        }
+}</span>
+
+// getEnv gets an environment variable or returns a default value
+func getEnv(key, defaultValue string) string <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package handlers
+
+import (
+        "net/http"
+        "time"
+
+        "github.com/gin-gonic/gin"
+)
+
+// HealthCheckResponse represents the health check response
+// swagger:model
+type HealthCheckResponse struct {
+        // The health status of the API
+        // example: healthy
+        Status string `json:"status"`
+        // The timestamp when the health check was performed
+        // example: 2024-01-01T12:00:00Z
+        Timestamp time.Time `json:"timestamp"`
+        // The version of the API
+        // example: 1.0.0
+        Version string `json:"version"`
+        // Additional health information
+        // example: {"database":"connected","redis":"connected"}
+        Details map[string]interface{} `json:"details,omitempty"`
+}
+
+// HelloResponse represents the hello endpoint response
+// swagger:model
+type HelloResponse struct {
+        // The greeting message
+        // example: Hello, World!
+        Message string `json:"message"`
+        // The timestamp when the request was processed
+        // example: 2024-01-01T12:00:00Z
+        Timestamp time.Time `json:"timestamp"`
+        // The API version
+        // example: 1.0.0
+        Version string `json:"version"`
+}
+
+// HealthCheck godoc
+// @Summary      Health check
+// @Description  Get the health status of the API. This endpoint can be used by load balancers and monitoring systems to verify the API is running properly.
+// @Tags         health
+// @Produce      json
+// @Success      200   {object}  HealthCheckResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /health [get]
+func HealthCheck(c *gin.Context) <span class="cov0" title="0">{
+        response := HealthCheckResponse{
+                Status:    "healthy",
+                Timestamp: time.Now(),
+                Version:   "1.0.0",
+        }
+
+        c.JSON(http.StatusOK, response)
+}</span>
+
+// Hello godoc
+// @Summary      Hello endpoint
+// @Description  Returns a hello world message. This endpoint is useful for testing basic connectivity to the API.
+// @Tags         hello
+// @Produce      json
+// @Success      200   {object}  HelloResponse
+// @Router       /api/v1/hello [get]
+func Hello(c *gin.Context) <span class="cov0" title="0">{
+        response := HelloResponse{
+                Message:   "Hello, World!",
+                Timestamp: time.Now(),
+                Version:   "1.0.0",
+        }
+
+        c.JSON(http.StatusOK, response)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package handlers
+
+import (
+        "net/http"
+        "unicorn-api/internal/auth"
+        "unicorn-api/internal/config"
+        "unicorn-api/internal/models"
+        "unicorn-api/internal/stores"
+
+        "time"
+
+        "github.com/gin-gonic/gin"
+        "github.com/google/uuid"
+)
+
+// --- Utility structures ---
+
+type IAMHandler struct {
+        store  stores.IAMStore
+        config *config.Config
+}
+
+func NewIAMHandler(store stores.IAMStore, cfg *config.Config) *IAMHandler <span class="cov10" title="6">{
+        return &amp;IAMHandler{store: store, config: cfg}
+}</span>
+
+// --- Request/Response structures ---
+
+// CreateRoleRequest represents the request body for creating a role
+// swagger:model
+type CreateRoleRequest struct {
+        // The name of the role (e.g., admin, user, moderator)
+        // example: admin
+        Name string `json:"name" binding:"required"`
+        // The permissions assigned to the role (0=Read, 1=Write, 2=Delete)
+        // example: [0,1,2]
+        Permissions []models.Permission `json:"permissions" binding:"required"`
+}
+
+// CreateRoleResponse represents the response when creating a role
+// swagger:model
+type CreateRoleResponse struct {
+        // The created role
+        Role models.Role `json:"role"`
+        // Success message
+        // example: Role created successfully
+        Message string `json:"message"`
+}
+
+// AssignRoleRequest represents the request body for assigning a role to an account
+// swagger:model
+type AssignRoleRequest struct {
+        // The ID of the account to assign the role to
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        AccountID string `json:"account_id" binding:"required"`
+        // The ID of the role to assign
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        RoleID string `json:"role_id" binding:"required"`
+}
+
+// AssignRoleResponse represents the response when assigning a role
+// swagger:model
+type AssignRoleResponse struct {
+        // Success message
+        // example: Role assigned successfully
+        Message string `json:"message"`
+        // The ID of the account
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        AccountID string `json:"account_id"`
+        // The ID of the role
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        RoleID string `json:"role_id"`
+}
+
+// CreateOrganizationRequest represents the request body for creating an organization
+// swagger:model
+type CreateOrganizationRequest struct {
+        // The name of the organization
+        // example: Acme Corporation
+        Name string `json:"name" binding:"required"`
+}
+
+// CreateOrganizationResponse represents the response when creating an organization
+// swagger:model
+type CreateOrganizationResponse struct {
+        // The created organization
+        Organization models.Organization `json:"organization"`
+        // Success message
+        // example: Organization created successfully
+        Message string `json:"message"`
+}
+
+// CreateUserRequest represents the request body for creating a user
+// swagger:model
+type CreateUserRequest struct {
+        // The display name of the user
+        // example: John Doe
+        Name string `json:"name" binding:"required"`
+        // The email address of the user (must be unique)
+        // example: john.doe@example.com
+        Email string `json:"email" binding:"required,email"`
+        // The password for the user account (will be hashed)
+        // example: securePassword123
+        Password string `json:"password" binding:"required,min=8"`
+        // The ID of the role to assign to the user
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        RoleID string `json:"role_id" binding:"required"`
+}
+
+// CreateUserResponse represents the response when creating a user
+// swagger:model
+type CreateUserResponse struct {
+        // The created user account
+        Account models.Account `json:"account"`
+        // Success message
+        // example: User created successfully
+        Message string `json:"message"`
+}
+
+// LoginRequest represents the request body for user authentication
+// swagger:model
+type LoginRequest struct {
+        // The email address of the user
+        // example: john.doe@example.com
+        Email string `json:"email" binding:"required,email"`
+        // The password for the user account
+        // example: securePassword123
+        Password string `json:"password" binding:"required"`
+}
+
+// LoginResponse represents the response when a user logs in
+// swagger:model
+type LoginResponse struct {
+        // The JWT token for authentication
+        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+        Token string `json:"token"`
+        // The type of token
+        // example: Bearer
+        TokenType string `json:"token_type"`
+        // The expiration time of the token
+        // example: 2024-01-01T12:00:00Z
+        ExpiresAt time.Time `json:"expires_at"`
+        // Success message
+        // example: Login successful
+        Message string `json:"message"`
+}
+
+// RefreshTokenRequest represents the request body for refreshing a JWT token
+// swagger:model
+type RefreshTokenRequest struct {
+        // The JWT token to refresh
+        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+        Token string `json:"token" binding:"required"`
+}
+
+// RefreshTokenResponse represents the response when refreshing a token
+// swagger:model
+type RefreshTokenResponse struct {
+        // The new JWT token
+        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
+        Token string `json:"token"`
+        // The type of token
+        // example: Bearer
+        TokenType string `json:"token_type"`
+        // The expiration time of the token
+        // example: 2024-01-01T12:00:00Z
+        ExpiresAt time.Time `json:"expires_at"`
+        // Success message
+        // example: Token refreshed successfully
+        Message string `json:"message"`
+}
+
+// TokenClaimsResponse represents the claims returned in the validate token endpoint
+// swagger:model
+type TokenClaimsResponse struct {
+        // The account ID
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        AccountID string `json:"account_id"`
+        // The role ID
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        RoleID string `json:"role_id"`
+        // The token expiration time
+        // example: 2024-01-01T12:00:00Z
+        ExpiresAt time.Time `json:"expires_at"`
+}
+
+// ValidateTokenResponse represents the response when validating a token
+// swagger:model
+type ValidateTokenResponse struct {
+        // The token claims
+        Claims TokenClaimsResponse `json:"claims"`
+        // Whether the token is valid
+        // example: true
+        Valid bool `json:"valid"`
+        // Success message
+        // example: Token is valid
+        Message string `json:"message"`
+}
+
+// ErrorResponse represents a standard error response
+// swagger:model
+type ErrorResponse struct {
+        // The error message
+        // example: Invalid request
+        Error string `json:"error"`
+        // Additional error details
+        // example: Field 'email' is required
+        Details string `json:"details,omitempty"`
+        // The HTTP status code
+        // example: 400
+        StatusCode int `json:"status_code"`
+        // The timestamp when the error occurred
+        // example: 2024-01-01T12:00:00Z
+        Timestamp time.Time `json:"timestamp"`
+}
+
+// --- High-Level Handler functions ---
+
+// CreateRole godoc
+// @Summary      Create a new role
+// @Description  Create a new role with specified permissions. Permissions are: 0=Read, 1=Write, 2=Delete
+// @Tags         roles
+// @Accept       json
+// @Produce      json
+// @Param        role  body  CreateRoleRequest  true  "Role information"
+// @Success      201   {object}  CreateRoleResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/roles [post]
+func (h *IAMHandler) CreateRole(c *gin.Context) <span class="cov6" title="3">{
+        var req CreateRoleRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov4" title="2">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
+                        Details:    err.Error(),
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+
+        <span class="cov1" title="1">role := &amp;models.Role{
+                ID:          uuid.New(),
+                CreatedAt:   time.Now(),
+                UpdatedAt:   time.Now(),
+                Name:        req.Name,
+                Permissions: req.Permissions,
+        }
+        if err := h.store.CreateRole(role); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+
+        <span class="cov1" title="1">c.JSON(http.StatusCreated, CreateRoleResponse{
+                Role:    *role,
+                Message: "Role created successfully",
+        })</span>
+}
+
+// AssignRole godoc
+// @Summary      Assign a role to an account
+// @Description  Assign a role to a user or bot account
+// @Tags         roles
+// @Accept       json
+// @Produce      json
+// @Param        assignment  body  AssignRoleRequest  true  "Role assignment information"
+// @Success      200   {object}  AssignRoleResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/roles/assign [post]
+func (h *IAMHandler) AssignRole(c *gin.Context) <span class="cov6" title="3">{
+        var req AssignRoleRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
+                        Details:    err.Error(),
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov6" title="3">if err := h.store.AssignRole(req.AccountID, req.RoleID); err != nil </span><span class="cov4" title="2">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov1" title="1">c.JSON(http.StatusOK, AssignRoleResponse{
+                Message:   "Role assigned successfully",
+                AccountID: req.AccountID,
+                RoleID:    req.RoleID,
+        })</span>
+}
+
+// CreateOrganization godoc
+// @Summary      Create a new organization
+// @Description  Create a new organization that can contain multiple accounts
+// @Tags         organizations
+// @Accept       json
+// @Produce      json
+// @Param        organization  body  CreateOrganizationRequest  true  "Organization information"
+// @Success      201   {object}  CreateOrganizationResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/organizations [post]
+func (h *IAMHandler) CreateOrganization(c *gin.Context) <span class="cov4" title="2">{
+        var req CreateOrganizationRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
+                        Details:    err.Error(),
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov1" title="1">org := &amp;models.Organization{
+                ID:        uuid.New(),
+                CreatedAt: time.Now(),
+                UpdatedAt: time.Now(),
+                Name:      req.Name,
+        }
+        if err := h.store.CreateOrganization(org); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov1" title="1">c.JSON(http.StatusCreated, CreateOrganizationResponse{
+                Organization: *org,
+                Message:      "Organization created successfully",
+        })</span>
+}
+
+// --- User-related Handler functions ---
+
+// CreateUserInOrg godoc
+// @Summary      Create a user in an organization
+// @Description  Create a user account in a specific organization with the specified role
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        org_id  path  string  true  "Organization ID"
+// @Param        user  body  CreateUserRequest  true  "User information"
+// @Success      201   {object}  CreateUserResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/organizations/{org_id}/users [post]
+func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3">{
+        orgID := c.Param("org_id")
+
+        var req CreateUserRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov4" title="2">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
+                        Details:    err.Error(),
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+
+        <span class="cov1" title="1">hashed, err := auth.HashPassword(req.Password)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      "Failed to hash password",
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+
+        <span class="cov1" title="1">account := &amp;models.Account{
+                ID:             uuid.New(),
+                CreatedAt:      time.Now(),
+                UpdatedAt:      time.Now(),
+                Name:           req.Name,
+                Email:          req.Email,
+                Type:           models.AccountTypeUser,
+                PasswordHash:   hashed,
+                OrganizationID: uuid.MustParse(orgID),
+                RoleID:         uuid.MustParse(req.RoleID),
+        }
+        if err := h.store.CreateAccount(account); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov1" title="1">c.JSON(http.StatusCreated, CreateUserResponse{
+                Account: *account,
+                Message: "User created successfully",
+        })</span>
+}
+
+// Login godoc
+// @Summary      Login
+// @Description  Authenticate a user and return a JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body  LoginRequest  true  "Login credentials"
+// @Success      200   {object}  LoginResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/login [post]
+func (h *IAMHandler) Login(c *gin.Context) <span class="cov7" title="4">{
+        var req LoginRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
+                        Details:    err.Error(),
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov6" title="3">account, err := h.store.GetAccountByEmail(req.Email)
+        if err != nil </span><span class="cov1" title="1">{
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid credentials",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov4" title="2">if !auth.CheckPasswordHash(req.Password, account.PasswordHash) </span><span class="cov1" title="1">{
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid credentials",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov1" title="1">token, err := auth.GenerateToken(account.ID.String(), account.RoleID.String(), h.config)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      "Failed to generate token",
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+
+        // Calculate expiration time (assuming 24 hours)
+        <span class="cov1" title="1">expiresAt := time.Now().Add(24 * time.Hour)
+
+        c.JSON(http.StatusOK, LoginResponse{
+                Token:     token,
+                TokenType: "Bearer",
+                ExpiresAt: expiresAt,
+                Message:   "Login successful",
+        })</span>
+}
+
+// RefreshToken godoc
+// @Summary      Refresh JWT token
+// @Description  Refresh an expired JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token  body  RefreshTokenRequest  true  "Refresh token request"
+// @Success      200   {object}  RefreshTokenResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/token/refresh [post]
+func (h *IAMHandler) RefreshToken(c *gin.Context) <span class="cov0" title="0">{
+        var req RefreshTokenRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Invalid request",
+                        Details:    err.Error(),
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov0" title="0">claims, err := auth.ValidateToken(req.Token, h.config)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid token",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov0" title="0">token, err := auth.GenerateToken(claims.AccountID, claims.RoleID, h.config)
+        if err != nil </span><span class="cov0" title="0">{
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      "Failed to generate token",
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+
+        // Calculate expiration time (assuming 24 hours)
+        <span class="cov0" title="0">expiresAt := time.Now().Add(24 * time.Hour)
+
+        c.JSON(http.StatusOK, RefreshTokenResponse{
+                Token:     token,
+                TokenType: "Bearer",
+                ExpiresAt: expiresAt,
+                Message:   "Token refreshed successfully",
+        })</span>
+}
+
+// ValidateToken godoc
+// @Summary      Validate JWT token
+// @Description  Validate a JWT token and return its claims
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        token  query  string  true  "JWT token"
+// @Success      200   {object}  ValidateTokenResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Router       /api/v1/token/validate [get]
+func (h *IAMHandler) ValidateToken(c *gin.Context) <span class="cov6" title="3">{
+        token := c.Query("token")
+        if token == "" </span><span class="cov1" title="1">{
+                c.JSON(http.StatusBadRequest, ErrorResponse{
+                        Error:      "Token required",
+                        StatusCode: http.StatusBadRequest,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov4" title="2">claims, err := auth.ValidateToken(token, h.config)
+        if err != nil </span><span class="cov4" title="2">{
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid token",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }</span>
+        <span class="cov0" title="0">c.JSON(http.StatusOK, ValidateTokenResponse{
+                Claims: TokenClaimsResponse{
+                        AccountID: claims.AccountID,
+                        RoleID:    claims.RoleID,
+                        ExpiresAt: claims.ExpiresAt.Time,
+                },
+                Valid:   true,
+                Message: "Token is valid",
+        })</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package middleware
+
+import (
+        "github.com/gin-gonic/gin"
+)
+
+// CORS returns a gin.HandlerFunc for handling CORS
+func CORS() gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                c.Header("Access-Control-Allow-Origin", "*")
+                c.Header("Access-Control-Allow-Credentials", "true")
+                c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+                c.Header("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+                if c.Request.Method == "OPTIONS" </span><span class="cov0" title="0">{
+                        c.AbortWithStatus(204)
+                        return
+                }</span>
+
+                <span class="cov0" title="0">c.Next()</span>
+        }
+} </pre>
+		
+		<pre class="file" id="file7" style="display: none">package middleware
+
+import (
+        "time"
+
+        "github.com/gin-gonic/gin"
+        "github.com/sirupsen/logrus"
+)
+
+// Logger returns a gin.HandlerFunc for logging HTTP requests
+func Logger() gin.HandlerFunc <span class="cov0" title="0">{
+        return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string </span><span class="cov0" title="0">{
+                logrus.WithFields(logrus.Fields{
+                        // "client_ip":    param.ClientIP,
+                        "timestamp": param.TimeStamp.Format(time.RFC3339),
+                        "method":    param.Method,
+                        "path":      param.Path,
+                        // "protocol":     param.Request.Proto,
+                        "status_code": param.StatusCode,
+                        "latency":     param.Latency,
+                        // "user_agent":   param.Request.UserAgent(),
+                        "error": param.ErrorMessage,
+                }).Info("HTTP Request")
+                return ""
+        }</span>)
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package middleware
+
+import (
+        "net/http"
+        "runtime/debug"
+
+        "github.com/gin-gonic/gin"
+        "github.com/sirupsen/logrus"
+)
+
+// Recovery returns a gin.HandlerFunc for recovering from panics
+func Recovery() gin.HandlerFunc <span class="cov0" title="0">{
+        return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) </span><span class="cov0" title="0">{
+                if err, ok := recovered.(string); ok </span><span class="cov0" title="0">{
+                        logrus.WithFields(logrus.Fields{
+                                "error":   err,
+                                "stack":   string(debug.Stack()),
+                                "path":    c.Request.URL.Path,
+                                "method":  c.Request.Method,
+                                "client":  c.ClientIP(),
+                        }).Error("Panic recovered")
+                }</span>
+
+                <span class="cov0" title="0">c.JSON(http.StatusInternalServerError, gin.H{
+                        "error": "Internal server error",
+                })</span>
+        })
+} </pre>
+		
+		<pre class="file" id="file9" style="display: none">package models
+
+import (
+        "database/sql/driver"
+        "encoding/json"
+        "errors"
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// 1. general errors for the IAM module
+var (
+        ErrInvalidCredentials = errors.New("invalid credentials")
+        ErrAccountNotFound    = errors.New("account not found")
+        ErrTokenInvalid       = errors.New("invalid token")
+        ErrPermissionDenied   = errors.New("permission denied")
+)
+
+// 2. roles &amp; permissions
+
+// Permission represents the level of access a role has
+// 0 = Read, 1 = Write, 2 = Delete
+type Permission int
+
+const (
+        Read   Permission = iota // Read permission (0)
+        Write                    // Write permission (1)
+        Delete                   // Delete permission (2)
+)
+
+// String returns the string representation of the permission
+func (p Permission) String() string <span class="cov0" title="0">{
+        switch p </span>{
+        case Read:<span class="cov0" title="0">
+                return "read"</span>
+        case Write:<span class="cov0" title="0">
+                return "write"</span>
+        case Delete:<span class="cov0" title="0">
+                return "delete"</span>
+        default:<span class="cov0" title="0">
+                return "unknown"</span>
+        }
+}
+
+// Permissions represents a slice of Permission that can be marshalled/unmarshalled to JSON
+type Permissions []Permission
+
+// Value implements the driver.Valuer interface for database serialization.
+func (p Permissions) Value() (driver.Value, error) <span class="cov0" title="0">{
+        if len(p) == 0 </span><span class="cov0" title="0">{
+                return "[]", nil // Store empty array as "[]"
+        }</span>
+        <span class="cov0" title="0">j, err := json.Marshal(p)
+        return string(j), err</span>
+}
+
+// Scan implements the sql.Scanner interface for database deserialization.
+func (p *Permissions) Scan(src interface{}) error <span class="cov0" title="0">{
+        var source []byte
+        switch src := src.(type) </span>{
+        case string:<span class="cov0" title="0">
+                source = []byte(src)</span>
+        case []byte:<span class="cov0" title="0">
+                source = src</span>
+        default:<span class="cov0" title="0">
+                return errors.New("incompatible type for Permissions")</span>
+        }
+
+        <span class="cov0" title="0">if len(source) == 0 </span><span class="cov0" title="0">{
+                *p = []Permission{} // Handle empty string as empty slice
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">return json.Unmarshal(source, p)</span>
+}
+
+// Role represents a user role in the system with associated permissions
+// swagger:model
+type Role struct {
+        // The unique ID of the role
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        ID uuid.UUID `json:"id" gorm:"type:text;primaryKey"`
+        // The creation timestamp
+        // example: 2024-01-01T12:00:00Z
+        CreatedAt time.Time `json:"created_at"`
+        // The last update timestamp
+        // example: 2024-01-01T12:00:00Z
+        UpdatedAt time.Time `json:"updated_at"`
+        // The name of the role (e.g., admin, user, moderator)
+        // example: admin
+        Name string `json:"name" gorm:"unique;not null;type:text"`
+        // The permissions assigned to the role (0=Read, 1=Write, 2=Delete)
+        // example: [0,1,2]
+        Permissions Permissions `json:"permissions" gorm:"type:json"`
+}
+
+// 3. user &amp; bots can have accounts
+
+// AccountType represents the type of account in the system
+type AccountType string
+
+const (
+        AccountTypeUser AccountType = "user" // Human user account
+        AccountTypeBot  AccountType = "bot"  // Automated service account
+)
+
+// Account represents a user or bot account in the system
+// swagger:model
+type Account struct {
+        // The unique ID of the account
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        ID uuid.UUID `json:"id" gorm:"type:text;primaryKey"`
+        // The creation timestamp
+        // example: 2024-01-01T12:00:00Z
+        CreatedAt time.Time `json:"created_at"`
+        // The last update timestamp
+        // example: 2024-01-01T12:00:00Z
+        UpdatedAt time.Time `json:"updated_at"`
+
+        // The display name of the account
+        // example: John Doe
+        Name string `json:"name" gorm:"type:text"`
+        // The email address (required for user accounts, unique)
+        // example: john.doe@example.com
+        Email string `json:"email,omitempty" gorm:"unique;type:text"`
+        // The type of account (user or bot)
+        // example: user
+        Type AccountType `json:"type" gorm:"type:text"`
+
+        // Hashed and salted password for user accounts.
+        // For service accounts, this might be empty or used for an initial secret.
+        // Omitted from JSON output for security
+        PasswordHash string `json:"-" gorm:"not null;type:text"`
+
+        // Token related (JWT) - last successful login timestamp
+        // example: 2024-01-01T12:00:00Z
+        LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+
+        // Foreign Keys
+        // The ID of the organization this account belongs to
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        OrganizationID uuid.UUID `json:"organization_id" gorm:"type:text"`
+        // The ID of the role assigned to this account
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        RoleID uuid.UUID `json:"role_id" gorm:"type:text"`
+
+        // GORM Associations
+        // The organization this account belongs to
+        Organization Organization `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+        // The role assigned to this account
+        Role Role `gorm:"foreignKey:RoleID" json:"role,omitempty"`
+}
+
+// Organization represents a group or company that can contain multiple accounts
+// swagger:model
+type Organization struct {
+        // The unique ID of the organization
+        // example: 123e4567-e89b-12d3-a456-426614174000
+        ID uuid.UUID `json:"id" gorm:"type:text;primaryKey"`
+        // The creation timestamp
+        // example: 2024-01-01T12:00:00Z
+        CreatedAt time.Time `json:"created_at"`
+        // The last update timestamp
+        // example: 2024-01-01T12:00:00Z
+        UpdatedAt time.Time `json:"updated_at"`
+
+        // The name of the organization (unique)
+        // example: Acme Corporation
+        Name string `json:"name" gorm:"unique;not null;type:text"`
+
+        // An organization can have many accounts
+        // example: [{"id":"123e4567-e89b-12d3-a456-426614174000","name":"John Doe","email":"john@acme.com","type":"user"}]
+        Accounts []Account `gorm:"foreignKey:OrganizationID" json:"accounts,omitempty"`
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package routes
+
+import (
+        "unicorn-api/internal/handlers"
+
+        "github.com/gin-gonic/gin"
+)
+
+// SetupRoutes configures all the routes for the application
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler) <span class="cov0" title="0">{
+        // API v1 group
+        v1 := router.Group("/api/v1")
+        </span><span class="cov0" title="0">{
+                // Example endpoints
+                v1.GET("/hello", handlers.Hello)
+
+                // 1. IAM
+                v1.POST("/roles", iamHandler.CreateRole)
+                v1.POST("/roles/assign", iamHandler.AssignRole)
+                v1.POST("/organizations", iamHandler.CreateOrganization)
+                v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
+                v1.POST("/login", iamHandler.Login)
+                v1.POST("/token/refresh", iamHandler.RefreshToken)
+                v1.GET("/token/validate", iamHandler.ValidateToken)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package stores
+
+import (
+        "fmt"
+        "unicorn-api/internal/models"
+
+        "github.com/google/uuid"
+        "gorm.io/driver/sqlite"
+        "gorm.io/gorm"
+        "gorm.io/gorm/logger"
+)
+
+// GORMIAMStore implements IAMStore using GORM for SQLite
+type GORMIAMStore struct {
+        db *gorm.DB
+}
+
+// NewGORMIAMStore creates a new GORMIAMStore
+func NewGORMIAMStore(dataSourceName string) (*GORMIAMStore, error) <span class="cov10" title="8">{
+        db, err := gorm.Open(sqlite.Open(dataSourceName), &amp;gorm.Config{
+                Logger: logger.Default.LogMode(logger.Silent),
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to open database with GORM: %w", err)
+        }</span>
+
+        // AutoMigrate will create and update tables based on your models
+        <span class="cov10" title="8">err = db.AutoMigrate(
+                &amp;models.Role{},
+                &amp;models.Organization{},
+                &amp;models.Account{},
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to auto migrate database schema: %w", err)
+        }</span>
+
+        <span class="cov10" title="8">return &amp;GORMIAMStore{db: db}, nil</span>
+}
+
+// CreateRole inserts a new role into the database
+func (s *GORMIAMStore) CreateRole(role *models.Role) error <span class="cov10" title="8">{
+        // GORM will automatically use the UUID in role.ID if it's set.
+        // If ID is zero-value (empty UUID), GORM won't auto-generate it.
+        // You might want to ensure ID is generated before calling Create.
+        if role.ID == uuid.Nil </span><span class="cov1" title="1">{
+                role.ID = uuid.New()
+        }</span>
+        <span class="cov10" title="8">result := s.db.Create(role)
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create role: %w", result.Error)
+        }</span>
+        <span class="cov10" title="8">return nil</span>
+}
+
+// AssignRole assigns a role to an account (one-to-one relationship based on Account.RoleID)
+func (s *GORMIAMStore) AssignRole(accountID, roleID string) error <span class="cov7" title="4">{
+        accUUID, err := uuid.Parse(accountID)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("invalid account ID format: %w", err)
+        }</span>
+        <span class="cov5" title="3">roleUUID, err := uuid.Parse(roleID)
+        if err != nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("invalid role ID format: %w", err)
+        }</span>
+
+        // Find the account
+        <span class="cov4" title="2">var account models.Account
+        result := s.db.Where("id = ?", accUUID).First(&amp;account)
+        if result.Error != nil </span><span class="cov1" title="1">{
+                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
+                        return models.ErrAccountNotFound // Use your custom error
+                }</span>
+                <span class="cov0" title="0">return fmt.Errorf("failed to find account: %w", result.Error)</span>
+        }
+
+        // Assign the role ID
+        <span class="cov1" title="1">account.RoleID = roleUUID
+
+        // Save the updated account
+        result = s.db.Save(&amp;account)
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to assign role to account: %w", result.Error)
+        }</span>
+        <span class="cov1" title="1">return nil</span>
+}
+
+// GetRoleByName retrieves a role by its name
+func (s *GORMIAMStore) GetRoleByName(name string) (*models.Role, error) <span class="cov4" title="2">{
+        var role models.Role
+        result := s.db.Where("name = ?", name).First(&amp;role)
+        if result.Error != nil </span><span class="cov1" title="1">{
+                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
+                        return nil, fmt.Errorf("role with name '%s' not found", name)
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get role by name: %w", result.Error)</span>
+        }
+        <span class="cov1" title="1">return &amp;role, nil</span>
+}
+
+// CreateOrganization inserts a new organization into the database
+func (s *GORMIAMStore) CreateOrganization(org *models.Organization) error <span class="cov9" title="7">{
+        if org.ID == uuid.Nil </span><span class="cov1" title="1">{
+                org.ID = uuid.New()
+        }</span>
+        <span class="cov9" title="7">result := s.db.Create(org)
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create organization: %w", result.Error)
+        }</span>
+        <span class="cov9" title="7">return nil</span>
+}
+
+// GetOrganizationByName retrieves an organization by its name
+func (s *GORMIAMStore) GetOrganizationByName(name string) (
+        *models.Organization,
+        error,
+) <span class="cov4" title="2">{
+        var org models.Organization
+        result := s.db.Where("name = ?", name).First(&amp;org)
+        if result.Error != nil </span><span class="cov1" title="1">{
+                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
+                        return nil, fmt.Errorf("organization with name '%s' not found", name)
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get organization by name: %w", result.Error)</span>
+        }
+        <span class="cov1" title="1">return &amp;org, nil</span>
+}
+
+// CreateAccount inserts a new account into the database
+func (s *GORMIAMStore) CreateAccount(account *models.Account) error <span class="cov7" title="5">{
+        if account.ID == uuid.Nil </span><span class="cov0" title="0">{
+                account.ID = uuid.New()
+        }</span>
+        <span class="cov7" title="5">result := s.db.Create(account)
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to create account: %w", result.Error)
+        }</span>
+        <span class="cov7" title="5">return nil</span>
+}
+
+// GetAccountByEmail retrieves an account by its email address
+func (s *GORMIAMStore) GetAccountByEmail(email string) (*models.Account, error) <span class="cov7" title="4">{
+        var account models.Account
+        // Preload the Organization and Role if you need their data when fetching an account
+        // This makes sure GORM fetches the associated data in one query or a few queries
+        result := s.db.Where("email = ?", email).Preload("Organization").Preload("Role").First(&amp;account)
+        if result.Error != nil </span><span class="cov1" title="1">{
+                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
+                        return nil, models.ErrAccountNotFound // Use your custom error
+                }</span>
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get account by email: %w", result.Error)</span>
+        }
+        <span class="cov5" title="3">return &amp;account, nil</span>
+}
+
+// UpdateAccount updates an existing account in the database
+func (s *GORMIAMStore) UpdateAccount(account *models.Account) error <span class="cov1" title="1">{
+        result := s.db.Save(account) // Save will update if primary key exists, otherwise insert
+        if result.Error != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update account: %w", result.Error)
+        }</span>
+        <span class="cov1" title="1">if result.RowsAffected == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("account with ID '%s' not found for update", account.ID)
+        }</span>
+        <span class="cov1" title="1">return nil</span>
+}
+
+func (s *GORMIAMStore) DB() *gorm.DB <span class="cov0" title="0">{
+        return s.db
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -49,6 +49,28 @@ test:
 	@echo "Running tests..."
 	$(GOTEST) -v ./...
 
+# Run tests with coverage
+test-coverage:
+	@echo "Running tests with coverage..."
+	$(GOTEST) -v -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage.out -o coverage.html
+	go tool cover -func=coverage.out | tail -1
+
+# Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	$(GOTEST) -v ./internal/integration/...
+
+# Run unit tests
+test-unit:
+	@echo "Running unit tests..."
+	$(GOTEST) -v ./internal/stores/... ./internal/handlers/...
+
+# Run all tests with script
+test-all:
+	@echo "Running comprehensive test suite..."
+	./scripts/run_tests.sh
+
 # Install dependencies
 deps:
 	@echo "Installing dependencies..."
