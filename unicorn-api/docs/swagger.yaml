@@ -34,6 +34,17 @@ definitions:
           example: 123e4567-e89b-12d3-a456-426614174000
         type: string
     type: object
+  handlers.CreateBucketRequest:
+    description: Request to create a new storage bucket
+    properties:
+      name:
+        description: |-
+          The name of the bucket
+          example: my-bucket
+        type: string
+    required:
+    - name
+    type: object
   handlers.CreateOrganizationRequest:
     properties:
       name:
@@ -187,24 +198,6 @@ definitions:
       version:
         description: |-
           The version of the API
-          example: 1.0.0
-        type: string
-    type: object
-  handlers.HelloResponse:
-    properties:
-      message:
-        description: |-
-          The greeting message
-          example: Hello, World!
-        type: string
-      timestamp:
-        description: |-
-          The timestamp when the request was processed
-          example: 2024-01-01T12:00:00Z
-        type: string
-      version:
-        description: |-
-          The API version
           example: 1.0.0
         type: string
     type: object
@@ -398,6 +391,34 @@ definitions:
     x-enum-varnames:
     - AccountTypeUser
     - AccountTypeBot
+  models.File:
+    description: A file stored in a storage bucket.
+    properties:
+      content_type:
+        description: The MIME type of the file
+        type: string
+      contents:
+        description: The file contents (base64 or text)
+        type: string
+      created_at:
+        description: The creation timestamp
+        type: string
+      id:
+        description: The unique identifier of the file
+        type: string
+      name:
+        description: The name of the file
+        type: string
+      size:
+        description: The size of the file in bytes
+        type: integer
+      storage_bucket_id:
+        description: The ID of the bucket this file belongs to
+        type: string
+      updated_at:
+        description: The last update timestamp
+        type: string
+    type: object
   models.Organization:
     properties:
       accounts:
@@ -476,6 +497,30 @@ definitions:
           example: 2024-01-01T12:00:00Z
         type: string
     type: object
+  models.StorageBucket:
+    description: A storage bucket owned by a user, containing files.
+    properties:
+      created_at:
+        description: The creation timestamp
+        type: string
+      files:
+        description: The files in the bucket
+        items:
+          $ref: '#/definitions/models.File'
+        type: array
+      id:
+        description: The unique identifier of the bucket
+        type: string
+      name:
+        description: The name of the bucket
+        type: string
+      updated_at:
+        description: The last update timestamp
+        type: string
+      user_id:
+        description: The ID of the user who owns the bucket
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -492,20 +537,6 @@ info:
   title: Unicorn API
   version: "1.0"
 paths:
-  /api/v1/hello:
-    get:
-      description: Returns a hello world message. This endpoint is useful for testing
-        basic connectivity to the API.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.HelloResponse'
-      summary: Hello endpoint
-      tags:
-      - hello
   /api/v1/login:
     post:
       consumes:
@@ -539,7 +570,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Login
       tags:
-      - auth
+      - IAM
   /api/v1/organizations:
     get:
       consumes:
@@ -565,7 +596,7 @@ paths:
       - BearerAuth: []
       summary: Get the user's organization and its users
       tags:
-      - organizations
+      - IAM
     post:
       consumes:
       - application/json
@@ -594,7 +625,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Create a new organization
       tags:
-      - organizations
+      - IAM
   /api/v1/organizations/{org_id}/users:
     post:
       consumes:
@@ -630,7 +661,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Create a user in an organization
       tags:
-      - users
+      - IAM
   /api/v1/roles:
     get:
       consumes:
@@ -656,7 +687,7 @@ paths:
       - BearerAuth: []
       summary: Get all roles in the user's organization
       tags:
-      - roles
+      - IAM
     post:
       consumes:
       - application/json
@@ -686,7 +717,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Create a new role
       tags:
-      - roles
+      - IAM
   /api/v1/roles/assign:
     post:
       consumes:
@@ -716,7 +747,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Assign a role to an account
       tags:
-      - roles
+      - IAM
   /api/v1/token/refresh:
     post:
       consumes:
@@ -750,7 +781,7 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Refresh JWT token
       tags:
-      - auth
+      - IAM
   /api/v1/token/validate:
     get:
       consumes:
@@ -779,7 +810,249 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       summary: Validate JWT token
       tags:
-      - auth
+      - IAM
+  /buckets:
+    get:
+      description: List all storage buckets owned by the authenticated user
+      parameters:
+      - default: Bearer <token>
+        description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.StorageBucket'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List buckets
+      tags:
+      - storage
+    post:
+      consumes:
+      - application/json
+      description: Create a new storage bucket
+      parameters:
+      - default: Bearer <token>
+        description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Bucket name
+        in: body
+        name: bucket
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateBucketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.StorageBucket'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create bucket
+      tags:
+      - storage
+  /buckets/{bucket_id}/files:
+    get:
+      description: List all files in a storage bucket
+      parameters:
+      - default: Bearer <token>
+        description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.File'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: List files
+      tags:
+      - storage
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a file to a storage bucket
+      parameters:
+      - default: Bearer <token>
+        description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.File'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Upload file
+      tags:
+      - storage
+  /buckets/{bucket_id}/files/{file_id}:
+    delete:
+      description: Delete a file from a storage bucket
+      parameters:
+      - default: Bearer <token>
+        description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: File ID
+        in: path
+        name: file_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Delete file
+      tags:
+      - storage
+    get:
+      description: Download a file from a storage bucket
+      parameters:
+      - default: Bearer <token>
+        description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Bucket ID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: File ID
+        in: path
+        name: file_id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Download file
+      tags:
+      - storage
   /health:
     get:
       description: Get the health status of the API. This endpoint can be used by
@@ -806,16 +1079,3 @@ securityDefinitions:
     name: Authorization
     type: apiKey
 swagger: "2.0"
-tags:
-- description: Authentication and authorization endpoints
-  name: auth
-- description: User management endpoints
-  name: users
-- description: Role and permission management endpoints
-  name: roles
-- description: Organization management endpoints
-  name: organizations
-- description: Health check and monitoring endpoints
-  name: health
-- description: Basic connectivity test endpoints
-  name: hello

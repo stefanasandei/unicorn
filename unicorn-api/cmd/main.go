@@ -17,24 +17,6 @@
 // @in header
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token. Example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-// @tag.name auth
-// @tag.description Authentication and authorization endpoints
-
-// @tag.name users
-// @tag.description User management endpoints
-
-// @tag.name roles
-// @tag.description Role and permission management endpoints
-
-// @tag.name organizations
-// @tag.description Organization management endpoints
-
-// @tag.name health
-// @tag.description Health check and monitoring endpoints
-
-// @tag.name hello
-// @tag.description Basic connectivity test endpoints
 package main
 
 import (
@@ -61,16 +43,26 @@ var (
 	BuildTime = "unknown"
 )
 
-func setupServices(cfg *config.Config) *handlers.IAMHandler {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler) {
 	// setup the stores
 	store, err := stores.NewGORMIAMStore("test.db")
 	if err != nil {
 		panic("failed to initialize IAM store: " + err.Error())
 	}
 
-	iamHandler := handlers.NewIAMHandler(store, cfg)
+	storagePath := os.Getenv("STORAGE_PATH")
+	if storagePath == "" {
+		storagePath = "./storage" // default fallback
+	}
+	storageStore, err := stores.NewGORMStorageStore("test.db", storagePath)
+	if err != nil {
+		panic("failed to initialize storage store: " + err.Error())
+	}
 
-	return iamHandler
+	iamHandler := handlers.NewIAMHandler(store, cfg)
+	storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
+
+	return iamHandler, storageHandler
 }
 
 func main() {
@@ -98,11 +90,11 @@ func main() {
 	router.Use(middleware.CORS())
 
 	// setup services
-	iamHandler := setupServices(cfg)
+	iamHandler, storageHandler := setupServices(cfg)
 
 	// Setup routes
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	routes.SetupRoutes(router, iamHandler)
+	routes.SetupRoutes(router, iamHandler, storageHandler)
 	router.GET("/health", handlers.HealthCheck)
 
 	// Get port from environment or use default

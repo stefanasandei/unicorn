@@ -11,6 +11,7 @@ type IAMStore interface {
 	CreateRole(role *models.Role) error
 	AssignRole(accountID, roleID string) error
 	GetRoleByName(name string) (*models.Role, error)
+	GetRoleByID(roleID string) (*models.Role, error)
 
 	// Organization management
 	CreateOrganization(org *models.Organization) error

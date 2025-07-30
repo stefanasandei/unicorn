@@ -163,65 +163,75 @@ var (
         BuildTime = "unknown"
 )
 
-func setupServices(cfg *config.Config) *handlers.IAMHandler <span class="cov0" title="0">{
+func setupServices(cfg *config.Config) (*handlers.IAMHandler<span class="cov0" title="0">, *handlers.StorageHandler) {
         // setup the stores
         store, err := stores.NewGORMIAMStore("test.db")
         if err != nil </span><span class="cov0" title="0">{
                 panic("failed to initialize IAM store: " + err.Error())</span>
         }
 
-        <span class="cov0" title="0">iamHandler := handlers.NewIAMHandler(store, cfg)
+        <span class="cov0" title="0">storagePath := os.Getenv("STORAGE_PATH")
+        if storagePath == "" {
+                storagePath = ".</span>/storage" // default fallback
+        }
+        storageStore, err := stores.NewGORMStorageStore("test.db", storagePath)
+        if err != n<span class="cov0" title="0">il {
+                panic("failed to initialize storage store: " + err.Error())
+        }
 
-        return iamHandler</span>
+        iamHandler := handlers.NewIAMHandler(s</span><span class="cov0" title="0">tore, cfg)
+        storageHandler := handlers.NewStorageHandler(storageStore, store, cfg)
+
+</span>        return iamHandler, storageHandler
 }
 
-func main() <span class="cov0" title="0">{
+func main() {
         log.Println("Starting Unicorn API...")
 
-        // Load environment variables
-        if err := godotenv.Load(); err != nil </span><span class="cov0" title="0">{
+</span>        // Load environment variables
+        i</span>f err := godotenv.Load(); err != nil {
                 log.Println("No .env file found, using system environment variables")
-        }</span>
+        }
 
         // Initialize configuration
-        <span class="cov0" title="0">cfg := config.New()
+        cfg := config.New()
 
         // Set Gin mode
-        if cfg.Environment == "production" </span><span class="cov0" title="0">{
+        if cfg.Environment == "production" {
                 gin.SetMode(gin.ReleaseMode)
-        }</span>
+        }
 
         // Create router
-        <span class="cov0" title="0">router := gin.New()
+        router := gin.New()
 
         // Add middleware
         router.Use(middleware.Logger())
         router.Use(middleware.Recovery())
         router.Use(middleware.CORS())
 
-        // setup services
-        iamHandler := setupServices(cfg)
+        // setup servi</span><span class="cov0" title="0">ces
+        iamHandler, storageHandler := setupServices(cfg)
 
-        // Setup routes
-        router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-        routes.SetupRoutes(router, iamHandler)
+</span>        // Setup routes
+        <span class="cov0" title="0">router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+        routes.SetupRoutes(router, iamHandler, storageHandler)
         router.GET("/health", handlers.HealthCheck)
 
         // Get port from environment or use default
         port := os.Getenv("PORT")
-        if port == "" </span><span class="cov0" title="0">{
-                port = "8080"
+        if port == "" {
+</span>                port = "8080"
         }</span>
 
-        <span class="cov0" title="0">log.Printf("Starting Unicorn API server on port %s", port)
+        log.Printf("Starting Unicorn API server on port %s", port)
         log.Printf("Version: %s, Build Time: %s", Version, BuildTime)
         log.Printf("Environment: %s", cfg.Environment)
         log.Printf("Swagger UI available at: http://localhost:%s/swagger/index.html", port)
 
         // Start server
-        if err := router.Run(":" + port); err != nil </span><span class="cov0" title="0">{
+        if err := router.Run(":" + port); err != nil {
                 log.Fatal("Failed to start server:", err)
-        }</span>
+        }
 }
 </pre>
 		
@@ -281,7 +291,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "IAM"
                 ],
                 "summary": "Login",
                 "parameters": [
@@ -324,6 +334,44 @@ const docTemplate = `{
             }
         },
         "/api/v1/organizations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the organization name and all users (name, role ID) in it",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "IAM"
+                ],
+                "summary": "Get the user's organization and its users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.GetOrganizationsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Create a new organization that can contain multiple accounts",
                 "consumes": [
@@ -333,7 +381,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "IAM"
                 ],
                 "summary": "Create a new organization",
                 "parameters": [
@@ -379,7 +427,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "IAM"
                 ],
                 "summary": "Create a user in an organization",
                 "parameters": [
@@ -423,6 +471,44 @@ const docTemplate = `{
             }
         },
         "/api/v1/roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all roles (name, permissions) for the authenticated user's organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "IAM"
+                ],
+                "summary": "Get all roles in the user's organization",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.GetRolesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Create a new role with specified permissions. Permissions are: 0=Read, 1=Write, 2=Delete",
                 "consumes": [
@@ -432,7 +518,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "roles"
+                    "IAM"
                 ],
                 "summary": "Create a new role",
                 "parameters": [
@@ -478,7 +564,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "roles"
+                    "IAM"
                 ],
                 "summary": "Assign a role to an account",
                 "parameters": [
@@ -524,7 +610,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "IAM"
                 ],
                 "summary": "Refresh JWT token",
                 "parameters": [
@@ -576,7 +662,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "IAM"
                 ],
                 "summary": "Validate JWT token",
                 "parameters": [
@@ -603,6 +689,364 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/buckets": {
+            "get": {
+                "description": "List all storage buckets owned by the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "List buckets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.StorageBucket"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new storage bucket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Create bucket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Bucket name",
+                        "name": "bucket",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateBucketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.StorageBucket"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/buckets/{bucket_id}/files": {
+            "get": {
+                "description": "List all files in a storage bucket",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "List files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.File"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Upload a file to a storage bucket",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Upload file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.File"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/buckets/{bucket_id}/files/{file_id}": {
+            "get": {
+                "description": "Download a file from a storage bucket",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Download file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a file from a storage bucket",
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Delete file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -672,6 +1116,19 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.CreateBucketRequest": {
+            "description": "Request to create a new storage bucket",
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "description": "The name of the bucket\nexample: my-bucket",
+                    "type": "string"
+                }
+            }
+        },
         "handlers.CreateOrganizationRequest": {
             "type": "object",
             "required": [
@@ -715,9 +1172,9 @@ const docTemplate = `{
                 "permissions": {
                     "description": "The permissions assigned to the role (0=Read, 1=Write, 2=Delete)\nexample: [0,1,2]",
                     "type": "array",
-                    "items": {
+            <span class="cov0" title="0">        "items": {
                         "$ref": "#/definitions/models.Permission"
-                    }
+ </span>                   }
                 }
             }
         },
@@ -804,6 +1261,31 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.GetOrganizationsResponse": {
+            "type": "object",
+            "properties": {
+                "organization_name": {
+                    "type": "string"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.OrganizationUser"
+                    }
+                }
+            }
+        },
+        "handlers.GetRolesResponse": {
+            "type": "object",
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Role"
+                    }
+                }
+            }
+        },
         "handlers.HealthCheckResponse": {
             "type": "object",
             "properties": {
@@ -881,6 +1363,20 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.OrganizationUser": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.RefreshTokenRequest": {
             "type": "object",
             "required": [
@@ -888,7 +1384,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "token": {
-                    "description": "The JWT token to refresh\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature",
+                    "description": "The JWT token to refresh\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature",
                     "type": "string"
                 }
             }
@@ -905,7 +1401,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "token": {
-                    "description": "The new JWT token\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature",
+                    "description": "The new JWT token\nexample: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature",
                     "type": "string"
                 },
                 "token_type": {
@@ -1032,6 +1528,44 @@ const docTemplate = `{
                 "AccountTypeBot"
             ]
         },
+        "models.File": {
+            "description": "A file stored in a storage bucket.",
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "description": "The MIME type of the file",
+                    "type": "string"
+                },
+                "contents": {
+                    "description": "The file contents (base64 or text)",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique identifier of the file",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the file",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "The size of the file in bytes",
+                    "type": "integer"
+                },
+                "storage_bucket_id": {
+                    "description": "The ID of the bucket this file belongs to",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp",
+                    "type": "string"
+                }
+            }
+        },
         "models.Organization": {
             "type": "object",
             "properties": {
@@ -1110,6 +1644,39 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "models.StorageBucket": {
+            "description": "A storage bucket owned by a user, containing files.",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "files": {
+                    "description": "The files in the bucket",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.File"
+                    }
+                },
+                "id": {
+                    "description": "The unique identifier of the bucket",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the bucket",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "The ID of the user who owns the bucket",
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -1162,9 +1729,9 @@ var SwaggerInfo = &amp;swag.Spec{
         RightDelim:       "}}",
 }
 
-func init() <span class="cov0" title="0">{
+func init() {
         swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
-}</span>
+}
 </pre>
 		
 		<pre class="file" id="file2" style="display: none">package auth
@@ -1510,7 +2077,7 @@ type LoginResponse struct {
 // swagger:model
 type RefreshTokenRequest struct {
         // The JWT token to refresh
-        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
         Token string `json:"token" binding:"required"`
 }
 
@@ -1518,7 +2085,7 @@ type RefreshTokenRequest struct {
 // swagger:model
 type RefreshTokenResponse struct {
         // The new JWT token
-        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
+        // example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
         Token string `json:"token"`
         // The type of token
         // example: Bearer
@@ -1580,7 +2147,7 @@ type ErrorResponse struct {
 // CreateRole godoc
 // @Summary      Create a new role
 // @Description  Create a new role with specified permissions. Permissions are: 0=Read, 1=Write, 2=Delete
-// @Tags         roles
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        role  body  CreateRoleRequest  true  "Role information"
@@ -1625,7 +2192,7 @@ func (h *IAMHandler) CreateRole(c *gin.Context) <span class="cov6" title="3">{
 // AssignRole godoc
 // @Summary      Assign a role to an account
 // @Description  Assign a role to a user or bot account
-// @Tags         roles
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        assignment  body  AssignRoleRequest  true  "Role assignment information"
@@ -1662,7 +2229,7 @@ func (h *IAMHandler) AssignRole(c *gin.Context) <span class="cov6" title="3">{
 // CreateOrganization godoc
 // @Summary      Create a new organization
 // @Description  Create a new organization that can contain multiple accounts
-// @Tags         organizations
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        organization  body  CreateOrganizationRequest  true  "Organization information"
@@ -1706,7 +2273,7 @@ func (h *IAMHandler) CreateOrganization(c *gin.Context) <span class="cov4" title
 // CreateUserInOrg godoc
 // @Summary      Create a user in an organization
 // @Description  Create a user account in a specific organization with the specified role
-// @Tags         users
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        org_id  path  string  true  "Organization ID"
@@ -1767,7 +2334,7 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) <span class="cov6" title="3
 // Login godoc
 // @Summary      Login
 // @Description  Authenticate a user and return a JWT token
-// @Tags         auth
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        credentials  body  LoginRequest  true  "Login credentials"
@@ -1828,7 +2395,7 @@ func (h *IAMHandler) Login(c *gin.Context) <span class="cov7" title="4">{
 // RefreshToken godoc
 // @Summary      Refresh JWT token
 // @Description  Refresh an expired JWT token
-// @Tags         auth
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        token  body  RefreshTokenRequest  true  "Refresh token request"
@@ -1881,7 +2448,7 @@ func (h *IAMHandler) RefreshToken(c *gin.Context) <span class="cov0" title="0">{
 // ValidateToken godoc
 // @Summary      Validate JWT token
 // @Description  Validate a JWT token and return its claims
-// @Tags         auth
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        token  query  string  true  "JWT token"
@@ -1917,6 +2484,151 @@ func (h *IAMHandler) ValidateToken(c *gin.Context) <span class="cov6" title="3">
                 Valid:   true,
                 Message: "Token is valid",
         })</span>
+}
+
+// --- New Response Structures ---
+
+// GetRolesResponse represents the response for listing roles
+// swagger:model
+type GetRolesResponse struct {
+        Roles []models.Role `json:"roles"`
+}
+
+// GetOrganizationsResponse represents the response for listing organizations and their users
+// swagger:model
+type GetOrganizationsResponse struct {
+        OrganizationName string             `json:"organization_name"`
+        Users            []OrganizationUser `json:"users"`
+}
+
+type OrganizationUser struct {
+        ID     string `json:"id"`
+        Name   string `json:"name"`
+        RoleID string `json:"role_id"`
+}
+
+// --- New Handler Methods ---
+
+// GetRoles godoc
+// @Summary      Get all roles in the user's organization
+// @Description  Returns all roles (name, permissions) for the authenticated user's organization
+// @Tags         IAM
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200   {object}  GetRolesResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/roles [get]
+func (h *IAMHandler) GetRoles(c *gin.Context) {
+        token := c.GetHeader("Authorization")
+        if token == "" || len(token) &lt; 8 || token[:7] != "Bearer " {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Missing or invalid Authorization header",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        claims, err := auth.ValidateToken(token[7:], h.config)
+        if err != nil {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid token",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        account, err := h.store.GetAccountByID(claims.AccountID)
+        if err != nil {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Account not found",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        roles, err := h.store.GetRolesByOrganizationID(account.OrganizationID.String())
+        if err != nil {
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        c.JSON(http.StatusOK, GetRolesResponse{Roles: roles})
+}
+
+// GetOrganizations godoc
+// @Summary      Get the user's organization and its users
+// @Description  Returns the organization name and all users (name, role ID) in it
+// @Tags         IAM
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200   {object}  GetOrganizationsResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/organizations [get]
+func (h *IAMHandler) GetOrganizations(c *gin.Context) {
+        token := c.GetHeader("Authorization")
+        if token == "" || len(token) &lt; 8 || token[:7] != "Bearer " {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Missing or invalid Authorization header",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        claims, err := auth.ValidateToken(token[7:], h.config)
+        if err != nil {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Invalid token",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        account, err := h.store.GetAccountByID(claims.AccountID)
+        if err != nil {
+                c.JSON(http.StatusUnauthorized, ErrorResponse{
+                        Error:      "Account not found",
+                        StatusCode: http.StatusUnauthorized,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        org, err := h.store.GetOrganizationByID(account.OrganizationID.String())
+        if err != nil {
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        users, err := h.store.GetAccountsByOrganizationID(account.OrganizationID.String())
+        if err != nil {
+                c.JSON(http.StatusInternalServerError, ErrorResponse{
+                        Error:      err.Error(),
+                        StatusCode: http.StatusInternalServerError,
+                        Timestamp:  time.Now(),
+                })
+                return
+        }
+        var orgUsers []OrganizationUser
+        for _, u := range users {
+                orgUsers = append(orgUsers, OrganizationUser{
+                        ID:     u.ID.String(),
+                        Name:   u.Name,
+                        RoleID: u.RoleID.String(),
+                })
+        }
+        c.JSON(http.StatusOK, GetOrganizationsResponse{
+                OrganizationName: org.Name,
+                Users:            orgUsers,
+        })
 }
 </pre>
 		
@@ -2186,22 +2898,29 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler) <span class="cov0" title="0">{
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, <span class="cov0" title="0">storageHandler *handlers.StorageHandler) {
         // API v1 group
         v1 := router.Group("/api/v1")
         </span><span class="cov0" title="0">{
-                // Example endpoints
-                v1.GET("/hello", handlers.Hello)
-
                 // 1. IAM
                 v1.POST("/roles", iamHandler.CreateRole)
+                v1.GET("/roles", iamHandler.GetRoles)
                 v1.POST("/roles/assign", iamHandler.AssignRole)
                 v1.POST("/organizations", iamHandler.CreateOrganization)
+                v1.GET("/organizations", iamHandler.GetOrganizations)
                 v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
                 v1.POST("/login", iamHandler.Login)
                 v1.POST("/token/refresh", iamHandler.RefreshToken)
                 v1.GET("/token/validate", iamHandler.ValidateToken)
-        }</span>
+
+                </span>// 2. Storage
+                v1.GET("/buckets", storageHandler.ListBucketsHandler)
+                v1.POST("/buckets", storageHandler.CreateBucketHandler)
+                v1.POST("/buckets/:bucket_id/files", storageHandler.UploadFileHandler)
+                v1.GET("/buckets/:bucket_id/files", storageHandler.ListFilesHandler)
+                v1.GET("/buckets/:bucket_id/files/:file_id", storageHandler.DownloadFileHandler)
+                v1.DELETE("/buckets/:bucket_id/files/:file_id", storageHandler.DeleteFileHandler)
+        }
 }
 </pre>
 		
@@ -2304,76 +3023,167 @@ func (s *GORMIAMStore) GetRoleByName(name string) (*models.Role, error) <span cl
         <span class="cov1" title="1">return &amp;role, nil</span>
 }
 
+// GetRoleByID retrieves a role by its ID
+func (s *GORMIAMStore) GetRoleByID(roleID string) (*models.Role, error) {
+        uid, err := uuid.Parse</span><span class="cov1" title="1">(roleID)
+        if err != nil {
+                </span>return nil, fmt.Errorf("invalid role ID: %w", err)
+        <span class="cov9" title="7">}
+        var role models.Role
+</span>        result := s.db.Where("id = ?", uid).First(&amp;role)
+        i</span>f result.Error != nil {
+        <span class="cov9" title="7">        if result</span>.Error == gorm.ErrRecordNotFound {
+                        return nil, fmt.Errorf("role with ID '%s' not found", roleID)
+                }
+                return nil, fmt.Errorf("failed to get role by ID: %w", result.Error)
+        }
+        return &amp;role, nil
+}
+
 // CreateOrganization inserts a new organization into the database
-func (s *GORMIAMStore) CreateOrganization(org *models.Organization) error <span class="cov9" title="7">{
-        if org.ID == uuid.Nil </span><span class="cov1" title="1">{
+func (s *GORMIAMStore) CreateOrganization(org *models.Organization) error {
+        if org.ID == uuid.Nil {</span><span class="cov1" title="1">
                 org.ID = uuid.New()
-        }</span>
-        <span class="cov9" title="7">result := s.db.Create(org)
-        if result.Error != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to create organization: %w", result.Error)
-        }</span>
-        <span class="cov9" title="7">return nil</span>
+</span>        }
+        re</span>sult := s.db.Create(org)
+        i<span class="cov0" title="0">f result.Error != nil {
+</span>                return fmt.Errorf("failed to create organization: %w", result.Error)
+        <span class="cov1" title="1">}
+</span>        return nil
 }
 
 // GetOrganizationByName retrieves an organization by its name
-func (s *GORMIAMStore) GetOrganizationByName(name string) (
+func (s *GORMIAMStore) GetO</span><span class="cov0" title="0">rganizationByName(name string) (
         *models.Organization,
-        error,
-) <span class="cov4" title="2">{
-        var org models.Organization
+        e</span>rror,
+)<span class="cov7" title="5"> {
+        var org models.Organiza</span><span class="cov0" title="0">tion
         result := s.db.Where("name = ?", name).First(&amp;org)
-        if result.Error != nil </span><span class="cov1" title="1">{
-                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
+        i</span>f result.Error != nil {
+        <span class="cov7" title="5">        if result</span>.Error == gorm.ErrRecordNotFound {
                         return nil, fmt.Errorf("organization with name '%s' not found", name)
-                }</span>
-                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get organization by name: %w", result.Error)</span>
+                }
+                return nil, fmt.Errorf("failed to get organization by name: %w", result.Error)
         }
-        <span class="cov1" title="1">return &amp;org, nil</span>
+        return &amp;org, nil
 }
 
 // CreateAccount inserts a new account into the database
-func (s *GORMIAMStore) CreateAccount(account *models.Account) error <span class="cov7" title="5">{
-        if account.ID == uuid.Nil </span><span class="cov0" title="0">{
-                account.ID = uuid.New()
-        }</span>
-        <span class="cov7" title="5">result := s.db.Create(account)
-        if result.Error != nil </span><span class="cov0" title="0">{
-                return fmt.Errorf("failed to create account: %w", result.Error)
-        }</span>
-        <span class="cov7" title="5">return nil</span>
+func (s *GORMIAMStore) C</span><span class="cov1" title="1">reateAccount(account *models.Account) error {
+        if account.ID == uuid.Nil {
+</span>                account.ID = uuid.New()
+        }
+</span>        r<span class="cov0" title="0">esult := s.db.Create(account)
+</span>        if result.Error != nil {
+        <span class="cov5" title="3">        return fmt.Errorf("</span>failed to create account: %w", result.Error)
+        }
+        return nil
 }
 
 // GetAccountByEmail retrieves an account by its email address
-func (s *GORMIAMStore) GetAccountByEmail(email string) (*models.Account, error) <span class="cov7" title="4">{
+func (s *GORMIAMStore) G</span><span class="cov0" title="0">etAccountByEmail(email string) (*models.Account, error) {
         var account models.Account
-        // Preload the Organization and Role if you need their data when fetching an account
-        // This makes sure GORM fetches the associated data in one query or a few queries
+        /</span>/ Preload the Organization and Role if you need their data when fetching an account
+        <span class="cov1" title="1">// This makes sure GORM fetc</span><span class="cov0" title="0">hes the associated data in one query or a few queries
         result := s.db.Where("email = ?", email).Preload("Organization").Preload("Role").First(&amp;account)
-        if result.Error != nil </span><span class="cov1" title="1">{
-                if result.Error == gorm.ErrRecordNotFound </span><span class="cov1" title="1">{
+        i</span>f result.Error != nil {
+        <span class="cov1" title="1">        if result</span>.Error == gorm.ErrRecordNotFound {
                         return nil, models.ErrAccountNotFound // Use your custom error
-                }</span>
-                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get account by email: %w", result.Error)</span>
+                }
+                return nil, fmt.Errorf("failed to g<span class="cov0" title="0">et account by email: %w", result.Error)
         }
-        <span class="cov5" title="3">return &amp;account, nil</span>
+        </span>return &amp;account, nil
 }
 
 // UpdateAccount updates an existing account in the database
-func (s *GORMIAMStore) UpdateAccount(account *models.Account) error <span class="cov1" title="1">{
+func (s *GORMIAMStore) UpdateAccount(account *models.Account) error {
         result := s.db.Save(account) // Save will update if primary key exists, otherwise insert
-        if result.Error != nil </span><span class="cov0" title="0">{
+        if result.Error != nil {
                 return fmt.Errorf("failed to update account: %w", result.Error)
-        }</span>
-        <span class="cov1" title="1">if result.RowsAffected == 0 </span><span class="cov0" title="0">{
+        }
+        if result.RowsAffected == 0 {
                 return fmt.Errorf("account with ID '%s' not found for update", account.ID)
-        }</span>
-        <span class="cov1" title="1">return nil</span>
+        }
+        return nil
 }
 
-func (s *GORMIAMStore) DB() *gorm.DB <span class="cov0" title="0">{
+// --- New methods for GET /roles and /organizations ---
+
+// GetAccountByID retrieves an account by its ID
+func (s *GORMIAMStore) GetAccountByID(accountID string) (*models.Account, error) {
+        uid, err := uuid.Parse(accountID)
+        if err != nil {
+                return nil, fmt.Errorf("invalid account ID: %w", err)
+        }
+        var account models.Account
+        result := s.db.Where("id = ?", uid).First(&amp;account)
+        if result.Error != nil {
+                if result.Error == gorm.ErrRecordNotFound {
+                        return nil, models.ErrAccountNotFound
+                }
+                return nil, fmt.Errorf("failed to get account by ID: %w", result.Error)
+        }
+        return &amp;account, nil
+}
+
+// GetRolesByOrganizationID returns all roles assigned to accounts in a given organization
+func (s *GORMIAMStore) GetRolesByOrganizationID(orgID string) ([]models.Role, error) {
+        uid, err := uuid.Parse(orgID)
+        if err != nil {
+                return nil, fmt.Errorf("invalid organization ID: %w", err)
+        }
+        var accounts []models.Account
+        if err := s.db.Where("organization_id = ?", uid).Find(&amp;accounts).Error; err != nil {
+                return nil, fmt.Errorf("failed to get accounts for organization: %w", err)
+        }
+        roleIDSet := make(map[uuid.UUID]struct{})
+        for _, acc := range accounts {
+                roleIDSet[acc.RoleID] = struct{}{}
+        }
+        if len(roleIDSet) == 0 {
+                return []models.Role{}, nil
+        }
+        var roleIDs []uuid.UUID
+        for rid := range roleIDSet {
+                roleIDs = append(roleIDs, rid)
+        }
+        var roles []models.Role
+        if err := s.db.Where("id IN ?", roleIDs).Find(&amp;roles).Error; err != nil {
+                return nil, fmt.Errorf("failed to get roles by IDs: %w", err)
+        }
+        return roles, nil
+}
+
+// GetOrganizationByID retrieves an organization by its ID
+func (s *GORMIAMStore) GetOrganizationByID(orgID string) (*models.Organization, error) {
+        var org models.Organization
+        result := s.db.Where("id = ?", orgID).First(&amp;org)
+        if result.Error != nil {
+                if result.Error == gorm.ErrRecordNotFound {
+                        return nil, fmt.Errorf("organization not found")
+                }
+                return nil, fmt.Errorf("failed to get organization by ID: %w", result.Error)
+        }
+        return &amp;org, nil
+}
+
+// GetAccountsByOrganizationID returns all accounts for a given organization
+func (s *GORMIAMStore) GetAccountsByOrganizationID(orgID string) ([]models.Account, error) {
+        uid, err := uuid.Parse(orgID)
+        if err != nil {
+                return nil, fmt.Errorf("invalid organization ID: %w", err)
+        }
+        var accounts []models.Account
+        result := s.db.Where("organization_id = ?", uid).Find(&amp;accounts)
+        if result.Error != nil {
+                return nil, fmt.Errorf("failed to get accounts by organization ID: %w", result.Error)
+        }
+        return accounts, nil
+}
+
+func (s *GORMIAMStore) DB() *gorm.DB {
         return s.db
-}</span>
+}
 </pre>
 		
 		</div>

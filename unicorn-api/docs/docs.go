@@ -24,26 +24,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/hello": {
-            "get": {
-                "description": "Returns a hello world message. This endpoint is useful for testing basic connectivity to the API.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "hello"
-                ],
-                "summary": "Hello endpoint",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.HelloResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/login": {
             "post": {
                 "description": "Authenticate a user and return a JWT token",
@@ -54,7 +34,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "IAM"
                 ],
                 "summary": "Login",
                 "parameters": [
@@ -111,7 +91,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "IAM"
                 ],
                 "summary": "Get the user's organization and its users",
                 "responses": {
@@ -144,7 +124,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "organizations"
+                    "IAM"
                 ],
                 "summary": "Create a new organization",
                 "parameters": [
@@ -190,7 +170,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "IAM"
                 ],
                 "summary": "Create a user in an organization",
                 "parameters": [
@@ -248,7 +228,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "roles"
+                    "IAM"
                 ],
                 "summary": "Get all roles in the user's organization",
                 "responses": {
@@ -281,7 +261,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "roles"
+                    "IAM"
                 ],
                 "summary": "Create a new role",
                 "parameters": [
@@ -327,7 +307,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "roles"
+                    "IAM"
                 ],
                 "summary": "Assign a role to an account",
                 "parameters": [
@@ -373,7 +353,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "IAM"
                 ],
                 "summary": "Refresh JWT token",
                 "parameters": [
@@ -425,7 +405,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "auth"
+                    "IAM"
                 ],
                 "summary": "Validate JWT token",
                 "parameters": [
@@ -452,6 +432,364 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/buckets": {
+            "get": {
+                "description": "List all storage buckets owned by the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "List buckets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.StorageBucket"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new storage bucket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Create bucket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Bucket name",
+                        "name": "bucket",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateBucketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.StorageBucket"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/buckets/{bucket_id}/files": {
+            "get": {
+                "description": "List all files in a storage bucket",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "List files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.File"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Upload a file to a storage bucket",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Upload file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.File"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/buckets/{bucket_id}/files/{file_id}": {
+            "get": {
+                "description": "Download a file from a storage bucket",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Download file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a file from a storage bucket",
+                "tags": [
+                    "storage"
+                ],
+                "summary": "Delete file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003ctoken\u003e",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bucket ID",
+                        "name": "bucket_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File ID",
+                        "name": "file_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -517,6 +855,19 @@ const docTemplate = `{
                 },
                 "role_id": {
                     "description": "The ID of the role\nexample: 123e4567-e89b-12d3-a456-426614174000",
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.CreateBucketRequest": {
+            "description": "Request to create a new storage bucket",
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "description": "The name of the bucket\nexample: my-bucket",
                     "type": "string"
                 }
             }
@@ -696,23 +1047,6 @@ const docTemplate = `{
                 },
                 "version": {
                     "description": "The version of the API\nexample: 1.0.0",
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.HelloResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "description": "The greeting message\nexample: Hello, World!",
-                    "type": "string"
-                },
-                "timestamp": {
-                    "description": "The timestamp when the request was processed\nexample: 2024-01-01T12:00:00Z",
-                    "type": "string"
-                },
-                "version": {
-                    "description": "The API version\nexample: 1.0.0",
                     "type": "string"
                 }
             }
@@ -920,6 +1254,44 @@ const docTemplate = `{
                 "AccountTypeBot"
             ]
         },
+        "models.File": {
+            "description": "A file stored in a storage bucket.",
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "description": "The MIME type of the file",
+                    "type": "string"
+                },
+                "contents": {
+                    "description": "The file contents (base64 or text)",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique identifier of the file",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the file",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "The size of the file in bytes",
+                    "type": "integer"
+                },
+                "storage_bucket_id": {
+                    "description": "The ID of the bucket this file belongs to",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp",
+                    "type": "string"
+                }
+            }
+        },
         "models.Organization": {
             "type": "object",
             "properties": {
@@ -998,6 +1370,39 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "models.StorageBucket": {
+            "description": "A storage bucket owned by a user, containing files.",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "files": {
+                    "description": "The files in the bucket",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.File"
+                    }
+                },
+                "id": {
+                    "description": "The unique identifier of the bucket",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the bucket",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "The ID of the user who owns the bucket",
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -1007,33 +1412,7 @@ const docTemplate = `{
             "name": "Authorization",
             "in": "header"
         }
-    },
-    "tags": [
-        {
-            "description": "Authentication and authorization endpoints",
-            "name": "auth"
-        },
-        {
-            "description": "User management endpoints",
-            "name": "users"
-        },
-        {
-            "description": "Role and permission management endpoints",
-            "name": "roles"
-        },
-        {
-            "description": "Organization management endpoints",
-            "name": "organizations"
-        },
-        {
-            "description": "Health check and monitoring endpoints",
-            "name": "health"
-        },
-        {
-            "description": "Basic connectivity test endpoints",
-            "name": "hello"
-        }
-    ]
+    }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it

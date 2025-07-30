@@ -97,6 +97,23 @@ func (s *GORMIAMStore) GetRoleByName(name string) (*models.Role, error) {
 	return &role, nil
 }
 
+// GetRoleByID retrieves a role by its ID
+func (s *GORMIAMStore) GetRoleByID(roleID string) (*models.Role, error) {
+	uid, err := uuid.Parse(roleID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid role ID: %w", err)
+	}
+	var role models.Role
+	result := s.db.Where("id = ?", uid).First(&role)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("role with ID '%s' not found", roleID)
+		}
+		return nil, fmt.Errorf("failed to get role by ID: %w", result.Error)
+	}
+	return &role, nil
+}
+
 // CreateOrganization inserts a new organization into the database
 func (s *GORMIAMStore) CreateOrganization(org *models.Organization) error {
 	if org.ID == uuid.Nil {

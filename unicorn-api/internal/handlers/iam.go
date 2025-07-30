@@ -219,7 +219,7 @@ type ErrorResponse struct {
 // CreateRole godoc
 // @Summary      Create a new role
 // @Description  Create a new role with specified permissions. Permissions are: 0=Read, 1=Write, 2=Delete
-// @Tags         roles
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        role  body  CreateRoleRequest  true  "Role information"
@@ -264,7 +264,7 @@ func (h *IAMHandler) CreateRole(c *gin.Context) {
 // AssignRole godoc
 // @Summary      Assign a role to an account
 // @Description  Assign a role to a user or bot account
-// @Tags         roles
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        assignment  body  AssignRoleRequest  true  "Role assignment information"
@@ -301,7 +301,7 @@ func (h *IAMHandler) AssignRole(c *gin.Context) {
 // CreateOrganization godoc
 // @Summary      Create a new organization
 // @Description  Create a new organization that can contain multiple accounts
-// @Tags         organizations
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        organization  body  CreateOrganizationRequest  true  "Organization information"
@@ -345,7 +345,7 @@ func (h *IAMHandler) CreateOrganization(c *gin.Context) {
 // CreateUserInOrg godoc
 // @Summary      Create a user in an organization
 // @Description  Create a user account in a specific organization with the specified role
-// @Tags         users
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        org_id  path  string  true  "Organization ID"
@@ -406,7 +406,7 @@ func (h *IAMHandler) CreateUserInOrg(c *gin.Context) {
 // Login godoc
 // @Summary      Login
 // @Description  Authenticate a user and return a JWT token
-// @Tags         auth
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        credentials  body  LoginRequest  true  "Login credentials"
@@ -467,7 +467,7 @@ func (h *IAMHandler) Login(c *gin.Context) {
 // RefreshToken godoc
 // @Summary      Refresh JWT token
 // @Description  Refresh an expired JWT token
-// @Tags         auth
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        token  body  RefreshTokenRequest  true  "Refresh token request"
@@ -520,7 +520,7 @@ func (h *IAMHandler) RefreshToken(c *gin.Context) {
 // ValidateToken godoc
 // @Summary      Validate JWT token
 // @Description  Validate a JWT token and return its claims
-// @Tags         auth
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Param        token  query  string  true  "JWT token"
@@ -584,7 +584,7 @@ type OrganizationUser struct {
 // GetRoles godoc
 // @Summary      Get all roles in the user's organization
 // @Description  Returns all roles (name, permissions) for the authenticated user's organization
-// @Tags         roles
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
@@ -635,7 +635,7 @@ func (h *IAMHandler) GetRoles(c *gin.Context) {
 // GetOrganizations godoc
 // @Summary      Get the user's organization and its users
 // @Description  Returns the organization name and all users (name, role ID) in it
-// @Tags         organizations
+// @Tags         IAM
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
