@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api';
-import { User, LoginRequest } from '@/types/api';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { apiClient } from "@/lib/api";
+import { User, LoginRequest } from "@/types/api";
 
 interface AuthContextType {
   user: User | null;
@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('token');
+      const storedToken = localStorage.getItem("token");
       if (storedToken) {
         try {
           const validation = await apiClient.validateToken(storedToken);
@@ -45,28 +45,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // In a real app, you'd have a user endpoint
             setUser({
               id: validation.claims.account_id,
-              name: 'User', // This would come from a user endpoint
-              email: 'user@example.com', // This would come from a user endpoint
+              name: "User", // This would come from a user endpoint
+              email: "user@example.com", // This would come from a user endpoint
               role: {
                 id: validation.claims.role_id,
-                name: 'User',
+                name: "User",
                 permissions: [],
-                created_at: '',
-                updated_at: ''
+                created_at: "",
+                updated_at: "",
               },
               organization: {
-                id: '',
+                id: "",
                 name: orgData.organization_name,
-                created_at: '',
-                updated_at: ''
-              }
+                created_at: "",
+                updated_at: "",
+              },
             });
           } else {
-            localStorage.removeItem('token');
+            localStorage.removeItem("token");
           }
         } catch (error) {
-          console.error('Token validation failed:', error);
-          localStorage.removeItem('token');
+          console.error("Token validation failed:", error);
+          localStorage.removeItem("token");
         }
       }
       setIsLoading(false);
@@ -78,39 +78,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginRequest) => {
     try {
       const response = await apiClient.login(credentials);
-      localStorage.setItem('token', response.token);
+      localStorage.setItem("token", response.token);
       setToken(response.token);
-      
+
       // Fetch user data after login
       const orgData = await apiClient.getOrganizations();
       setUser({
-        id: 'user-id', // This would come from the login response or a user endpoint
-        name: 'User',
+        id: "user-id", // This would come from the login response or a user endpoint
+        name: "User",
         email: credentials.email,
         role: {
-          id: 'role-id',
-          name: 'User',
+          id: "role-id",
+          name: "User",
           permissions: [],
-          created_at: '',
-          updated_at: ''
+          created_at: "",
+          updated_at: "",
         },
         organization: {
-          id: '',
+          id: "",
           name: orgData.organization_name,
-          created_at: '',
-          updated_at: ''
-        }
+          created_at: "",
+          updated_at: "",
+        },
       });
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
       throw error;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    window.location.href = "/";
   };
 
   const value: AuthContextType = {
@@ -121,9 +122,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-}; 
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
