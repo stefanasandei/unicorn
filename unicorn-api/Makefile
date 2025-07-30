@@ -23,16 +23,19 @@ all: clean build
 # Build the application
 build:
 	@echo "Building $(BINARY_NAME)..."
+	swag init
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_FILE)
 
 # Build for Linux
 build-linux:
 	@echo "Building $(BINARY_NAME) for Linux..."
+	swag init
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_UNIX) $(MAIN_FILE)
 
 # Run the application
 run:
 	@echo "Running $(BINARY_NAME)..."
+	@swag init -g cmd/main.go
 	$(GOCMD) run $(MAIN_FILE)
 
 # Clean build artifacts

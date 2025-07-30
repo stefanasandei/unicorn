@@ -1,0 +1,162 @@
+package stores
+
+import (
+	"fmt"
+	"unicorn-api/internal/models"
+
+	"github.com/google/uuid"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+// GORMIAMStore implements IAMStore using GORM for SQLite
+type GORMIAMStore struct {
+	db *gorm.DB
+}
+
+// NewGORMIAMStore creates a new GORMIAMStore
+func NewGORMIAMStore(dataSourceName string) (*GORMIAMStore, error) {
+	db, err := gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database with GORM: %w", err)
+	}
+
+	// AutoMigrate will create and update tables based on your models
+	err = db.AutoMigrate(
+		&models.Role{},
+		&models.Organization{},
+		&models.Account{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to auto migrate database schema: %w", err)
+	}
+
+	return &GORMIAMStore{db: db}, nil
+}
+
+// CreateRole inserts a new role into the database
+func (s *GORMIAMStore) CreateRole(role *models.Role) error {
+	// GORM will automatically use the UUID in role.ID if it's set.
+	// If ID is zero-value (empty UUID), GORM won't auto-generate it.
+	// You might want to ensure ID is generated before calling Create.
+	if role.ID == uuid.Nil {
+		role.ID = uuid.New()
+	}
+	result := s.db.Create(role)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create role: %w", result.Error)
+	}
+	return nil
+}
+
+// AssignRole assigns a role to an account (one-to-one relationship based on Account.RoleID)
+func (s *GORMIAMStore) AssignRole(accountID, roleID string) error {
+	accUUID, err := uuid.Parse(accountID)
+	if err != nil {
+		return fmt.Errorf("invalid account ID format: %w", err)
+	}
+	roleUUID, err := uuid.Parse(roleID)
+	if err != nil {
+		return fmt.Errorf("invalid role ID format: %w", err)
+	}
+
+	// Find the account
+	var account models.Account
+	result := s.db.Where("id = ?", accUUID).First(&account)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return models.ErrAccountNotFound // Use your custom error
+		}
+		return fmt.Errorf("failed to find account: %w", result.Error)
+	}
+
+	// Assign the role ID
+	account.RoleID = roleUUID
+
+	// Save the updated account
+	result = s.db.Save(&account)
+	if result.Error != nil {
+		return fmt.Errorf("failed to assign role to account: %w", result.Error)
+	}
+	return nil
+}
+
+// GetRoleByName retrieves a role by its name
+func (s *GORMIAMStore) GetRoleByName(name string) (*models.Role, error) {
+	var role models.Role
+	result := s.db.Where("name = ?", name).First(&role)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("role with name '%s' not found", name)
+		}
+		return nil, fmt.Errorf("failed to get role by name: %w", result.Error)
+	}
+	return &role, nil
+}
+
+// CreateOrganization inserts a new organization into the database
+func (s *GORMIAMStore) CreateOrganization(org *models.Organization) error {
+	if org.ID == uuid.Nil {
+		org.ID = uuid.New()
+	}
+	result := s.db.Create(org)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create organization: %w", result.Error)
+	}
+	return nil
+}
+
+// GetOrganizationByName retrieves an organization by its name
+func (s *GORMIAMStore) GetOrganizationByName(name string) (
+	*models.Organization,
+	error,
+) {
+	var org models.Organization
+	result := s.db.Where("name = ?", name).First(&org)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("organization with name '%s' not found", name)
+		}
+		return nil, fmt.Errorf("failed to get organization by name: %w", result.Error)
+	}
+	return &org, nil
+}
+
+// CreateAccount inserts a new account into the database
+func (s *GORMIAMStore) CreateAccount(account *models.Account) error {
+	if account.ID == uuid.Nil {
+		account.ID = uuid.New()
+	}
+	result := s.db.Create(account)
+	if result.Error != nil {
+		return fmt.Errorf("failed to create account: %w", result.Error)
+	}
+	return nil
+}
+
+// GetAccountByEmail retrieves an account by its email address
+func (s *GORMIAMStore) GetAccountByEmail(email string) (*models.Account, error) {
+	var account models.Account
+	// Preload the Organization and Role if you need their data when fetching an account
+	// This makes sure GORM fetches the associated data in one query or a few queries
+	result := s.db.Where("email = ?", email).Preload("Organization").Preload("Role").First(&account)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, models.ErrAccountNotFound // Use your custom error
+		}
+		return nil, fmt.Errorf("failed to get account by email: %w", result.Error)
+	}
+	return &account, nil
+}
+
+// UpdateAccount updates an existing account in the database
+func (s *GORMIAMStore) UpdateAccount(account *models.Account) error {
+	result := s.db.Save(account) // Save will update if primary key exists, otherwise insert
+	if result.Error != nil {
+		return fmt.Errorf("failed to update account: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("account with ID '%s' not found for update", account.ID)
+	}
+	return nil
+}

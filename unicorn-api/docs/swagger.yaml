@@ -1,0 +1,746 @@
+basePath: /
+definitions:
+  handlers.AssignRoleRequest:
+    properties:
+      account_id:
+        description: |-
+          The ID of the account to assign the role to
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      role_id:
+        description: |-
+          The ID of the role to assign
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    required:
+    - account_id
+    - role_id
+    type: object
+  handlers.AssignRoleResponse:
+    properties:
+      account_id:
+        description: |-
+          The ID of the account
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      message:
+        description: |-
+          Success message
+          example: Role assigned successfully
+        type: string
+      role_id:
+        description: |-
+          The ID of the role
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    type: object
+  handlers.CreateOrganizationRequest:
+    properties:
+      name:
+        description: |-
+          The name of the organization
+          example: Acme Corporation
+        type: string
+    required:
+    - name
+    type: object
+  handlers.CreateOrganizationResponse:
+    properties:
+      message:
+        description: |-
+          Success message
+          example: Organization created successfully
+        type: string
+      organization:
+        allOf:
+        - $ref: '#/definitions/models.Organization'
+        description: The created organization
+    type: object
+  handlers.CreateRoleRequest:
+    properties:
+      name:
+        description: |-
+          The name of the role (e.g., admin, user, moderator)
+          example: admin
+        type: string
+      permissions:
+        description: |-
+          The permissions assigned to the role (0=Read, 1=Write, 2=Delete)
+          example: [0,1,2]
+        items:
+          $ref: '#/definitions/models.Permission'
+        type: array
+    required:
+    - name
+    - permissions
+    type: object
+  handlers.CreateRoleResponse:
+    properties:
+      message:
+        description: |-
+          Success message
+          example: Role created successfully
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/models.Role'
+        description: The created role
+    type: object
+  handlers.CreateUserRequest:
+    properties:
+      email:
+        description: |-
+          The email address of the user (must be unique)
+          example: john.doe@example.com
+        type: string
+      name:
+        description: |-
+          The display name of the user
+          example: John Doe
+        type: string
+      password:
+        description: |-
+          The password for the user account (will be hashed)
+          example: securePassword123
+        minLength: 8
+        type: string
+      role_id:
+        description: |-
+          The ID of the role to assign to the user
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - role_id
+    type: object
+  handlers.CreateUserResponse:
+    properties:
+      account:
+        allOf:
+        - $ref: '#/definitions/models.Account'
+        description: The created user account
+      message:
+        description: |-
+          Success message
+          example: User created successfully
+        type: string
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      details:
+        description: |-
+          Additional error details
+          example: Field 'email' is required
+        type: string
+      error:
+        description: |-
+          The error message
+          example: Invalid request
+        type: string
+      status_code:
+        description: |-
+          The HTTP status code
+          example: 400
+        type: integer
+      timestamp:
+        description: |-
+          The timestamp when the error occurred
+          example: 2024-01-01T12:00:00Z
+        type: string
+    type: object
+  handlers.HealthCheckResponse:
+    properties:
+      details:
+        additionalProperties: true
+        description: |-
+          Additional health information
+          example: {"database":"connected","redis":"connected"}
+        type: object
+      status:
+        description: |-
+          The health status of the API
+          example: healthy
+        type: string
+      timestamp:
+        description: |-
+          The timestamp when the health check was performed
+          example: 2024-01-01T12:00:00Z
+        type: string
+      version:
+        description: |-
+          The version of the API
+          example: 1.0.0
+        type: string
+    type: object
+  handlers.HelloResponse:
+    properties:
+      message:
+        description: |-
+          The greeting message
+          example: Hello, World!
+        type: string
+      timestamp:
+        description: |-
+          The timestamp when the request was processed
+          example: 2024-01-01T12:00:00Z
+        type: string
+      version:
+        description: |-
+          The API version
+          example: 1.0.0
+        type: string
+    type: object
+  handlers.LoginRequest:
+    properties:
+      email:
+        description: |-
+          The email address of the user
+          example: john.doe@example.com
+        type: string
+      password:
+        description: |-
+          The password for the user account
+          example: securePassword123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handlers.LoginResponse:
+    properties:
+      expires_at:
+        description: |-
+          The expiration time of the token
+          example: 2024-01-01T12:00:00Z
+        type: string
+      message:
+        description: |-
+          Success message
+          example: Login successful
+        type: string
+      token:
+        description: |-
+          The JWT token for authentication
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+        type: string
+      token_type:
+        description: |-
+          The type of token
+          example: Bearer
+        type: string
+    type: object
+  handlers.RefreshTokenRequest:
+    properties:
+      token:
+        description: |-
+          The JWT token to refresh
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+        type: string
+    required:
+    - token
+    type: object
+  handlers.RefreshTokenResponse:
+    properties:
+      expires_at:
+        description: |-
+          The expiration time of the token
+          example: 2024-01-01T12:00:00Z
+        type: string
+      message:
+        description: |-
+          Success message
+          example: Token refreshed successfully
+        type: string
+      token:
+        description: |-
+          The new JWT token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
+        type: string
+      token_type:
+        description: |-
+          The type of token
+          example: Bearer
+        type: string
+    type: object
+  handlers.TokenClaimsResponse:
+    properties:
+      account_id:
+        description: |-
+          The account ID
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      expires_at:
+        description: |-
+          The token expiration time
+          example: 2024-01-01T12:00:00Z
+        type: string
+      role_id:
+        description: |-
+          The role ID
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    type: object
+  handlers.ValidateTokenResponse:
+    properties:
+      claims:
+        allOf:
+        - $ref: '#/definitions/handlers.TokenClaimsResponse'
+        description: The token claims
+      message:
+        description: |-
+          Success message
+          example: Token is valid
+        type: string
+      valid:
+        description: |-
+          Whether the token is valid
+          example: true
+        type: boolean
+    type: object
+  models.Account:
+    properties:
+      created_at:
+        description: |-
+          The creation timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+      email:
+        description: |-
+          The email address (required for user accounts, unique)
+          example: john.doe@example.com
+        type: string
+      id:
+        description: |-
+          The unique ID of the account
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      last_login_at:
+        description: |-
+          Token related (JWT) - last successful login timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+      name:
+        description: |-
+          The display name of the account
+          example: John Doe
+        type: string
+      organization:
+        allOf:
+        - $ref: '#/definitions/models.Organization'
+        description: |-
+          GORM Associations
+          The organization this account belongs to
+      organization_id:
+        description: |-
+          Foreign Keys
+          The ID of the organization this account belongs to
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/models.Role'
+        description: The role assigned to this account
+      role_id:
+        description: |-
+          The ID of the role assigned to this account
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/models.AccountType'
+        description: |-
+          The type of account (user or bot)
+          example: user
+      updated_at:
+        description: |-
+          The last update timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+    type: object
+  models.AccountType:
+    enum:
+    - user
+    - bot
+    type: string
+    x-enum-comments:
+      AccountTypeBot: Automated service account
+      AccountTypeUser: Human user account
+    x-enum-descriptions:
+    - Human user account
+    - Automated service account
+    x-enum-varnames:
+    - AccountTypeUser
+    - AccountTypeBot
+  models.Organization:
+    properties:
+      accounts:
+        description: |-
+          An organization can have many accounts
+          example: [{"id":"123e4567-e89b-12d3-a456-426614174000","name":"John Doe","email":"john@acme.com","type":"user"}]
+        items:
+          $ref: '#/definitions/models.Account'
+        type: array
+      created_at:
+        description: |-
+          The creation timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+      id:
+        description: |-
+          The unique ID of the organization
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      name:
+        description: |-
+          The name of the organization (unique)
+          example: Acme Corporation
+        type: string
+      updated_at:
+        description: |-
+          The last update timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+    type: object
+  models.Permission:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-comments:
+      Delete: Delete permission (2)
+      Read: Read permission (0)
+      Write: Write permission (1)
+    x-enum-descriptions:
+    - Read permission (0)
+    - Write permission (1)
+    - Delete permission (2)
+    x-enum-varnames:
+    - Read
+    - Write
+    - Delete
+  models.Role:
+    properties:
+      created_at:
+        description: |-
+          The creation timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+      id:
+        description: |-
+          The unique ID of the role
+          example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      name:
+        description: |-
+          The name of the role (e.g., admin, user, moderator)
+          example: admin
+        type: string
+      permissions:
+        description: |-
+          The permissions assigned to the role (0=Read, 1=Write, 2=Delete)
+          example: [0,1,2]
+        items:
+          $ref: '#/definitions/models.Permission'
+        type: array
+      updated_at:
+        description: |-
+          The last update timestamp
+          example: 2024-01-01T12:00:00Z
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@unicorn-api.com
+    name: Unicorn API Support
+    url: https://github.com/your-org/unicorn-api
+  description: A comprehensive RESTful API for Unicorn services providing Identity
+    and Access Management (IAM) functionality. This API supports user authentication,
+    role-based access control, organization management, and JWT token handling.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Unicorn API
+  version: "1.0"
+paths:
+  /api/v1/hello:
+    get:
+      description: Returns a hello world message. This endpoint is useful for testing
+        basic connectivity to the API.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.HelloResponse'
+      summary: Hello endpoint
+      tags:
+      - hello
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and return a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /api/v1/organizations:
+    post:
+      consumes:
+      - application/json
+      description: Create a new organization that can contain multiple accounts
+      parameters:
+      - description: Organization information
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateOrganizationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a new organization
+      tags:
+      - organizations
+  /api/v1/organizations/{org_id}/users:
+    post:
+      consumes:
+      - application/json
+      description: Create a user account in a specific organization with the specified
+        role
+      parameters:
+      - description: Organization ID
+        in: path
+        name: org_id
+        required: true
+        type: string
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a user in an organization
+      tags:
+      - users
+  /api/v1/roles:
+    post:
+      consumes:
+      - application/json
+      description: 'Create a new role with specified permissions. Permissions are:
+        0=Read, 1=Write, 2=Delete'
+      parameters:
+      - description: Role information
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateRoleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Create a new role
+      tags:
+      - roles
+  /api/v1/roles/assign:
+    post:
+      consumes:
+      - application/json
+      description: Assign a role to a user or bot account
+      parameters:
+      - description: Role assignment information
+        in: body
+        name: assignment
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AssignRoleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Assign a role to an account
+      tags:
+      - roles
+  /api/v1/token/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh an expired JWT token
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.RefreshTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh JWT token
+      tags:
+      - auth
+  /api/v1/token/validate:
+    get:
+      consumes:
+      - application/json
+      description: Validate a JWT token and return its claims
+      parameters:
+      - description: JWT token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ValidateTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Validate JWT token
+      tags:
+      - auth
+  /health:
+    get:
+      description: Get the health status of the API. This endpoint can be used by
+        load balancers and monitoring systems to verify the API is running properly.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.HealthCheckResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Health check
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    description: 'Type "Bearer" followed by a space and JWT token. Example: "Bearer
+      eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Authentication and authorization endpoints
+  name: auth
+- description: User management endpoints
+  name: users
+- description: Role and permission management endpoints
+  name: roles
+- description: Organization management endpoints
+  name: organizations
+- description: Health check and monitoring endpoints
+  name: health
+- description: Basic connectivity test endpoints
+  name: hello
