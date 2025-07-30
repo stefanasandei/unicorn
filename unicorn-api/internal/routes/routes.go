@@ -16,8 +16,10 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler) {
 
 		// 1. IAM
 		v1.POST("/roles", iamHandler.CreateRole)
+		v1.GET("/roles", iamHandler.GetRoles) // Added GET /roles
 		v1.POST("/roles/assign", iamHandler.AssignRole)
 		v1.POST("/organizations", iamHandler.CreateOrganization)
+		v1.GET("/organizations", iamHandler.GetOrganizations) // Added GET /organizations
 		v1.POST("/organizations/:org_id/users", iamHandler.CreateUserInOrg)
 		v1.POST("/login", iamHandler.Login)
 		v1.POST("/token/refresh", iamHandler.RefreshToken)

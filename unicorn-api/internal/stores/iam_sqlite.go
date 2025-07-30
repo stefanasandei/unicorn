@@ -164,6 +164,80 @@ func (s *GORMIAMStore) UpdateAccount(account *models.Account) error {
 	return nil
 }
 
+// --- New methods for GET /roles and /organizations ---
+
+// GetAccountByID retrieves an account by its ID
+func (s *GORMIAMStore) GetAccountByID(accountID string) (*models.Account, error) {
+	uid, err := uuid.Parse(accountID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid account ID: %w", err)
+	}
+	var account models.Account
+	result := s.db.Where("id = ?", uid).First(&account)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, models.ErrAccountNotFound
+		}
+		return nil, fmt.Errorf("failed to get account by ID: %w", result.Error)
+	}
+	return &account, nil
+}
+
+// GetRolesByOrganizationID returns all roles assigned to accounts in a given organization
+func (s *GORMIAMStore) GetRolesByOrganizationID(orgID string) ([]models.Role, error) {
+	uid, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	var accounts []models.Account
+	if err := s.db.Where("organization_id = ?", uid).Find(&accounts).Error; err != nil {
+		return nil, fmt.Errorf("failed to get accounts for organization: %w", err)
+	}
+	roleIDSet := make(map[uuid.UUID]struct{})
+	for _, acc := range accounts {
+		roleIDSet[acc.RoleID] = struct{}{}
+	}
+	if len(roleIDSet) == 0 {
+		return []models.Role{}, nil
+	}
+	var roleIDs []uuid.UUID
+	for rid := range roleIDSet {
+		roleIDs = append(roleIDs, rid)
+	}
+	var roles []models.Role
+	if err := s.db.Where("id IN ?", roleIDs).Find(&roles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get roles by IDs: %w", err)
+	}
+	return roles, nil
+}
+
+// GetOrganizationByID retrieves an organization by its ID
+func (s *GORMIAMStore) GetOrganizationByID(orgID string) (*models.Organization, error) {
+	var org models.Organization
+	result := s.db.Where("id = ?", orgID).First(&org)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("organization not found")
+		}
+		return nil, fmt.Errorf("failed to get organization by ID: %w", result.Error)
+	}
+	return &org, nil
+}
+
+// GetAccountsByOrganizationID returns all accounts for a given organization
+func (s *GORMIAMStore) GetAccountsByOrganizationID(orgID string) ([]models.Account, error) {
+	uid, err := uuid.Parse(orgID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	var accounts []models.Account
+	result := s.db.Where("organization_id = ?", uid).Find(&accounts)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get accounts by organization ID: %w", result.Error)
+	}
+	return accounts, nil
+}
+
 func (s *GORMIAMStore) DB() *gorm.DB {
 	return s.db
 }

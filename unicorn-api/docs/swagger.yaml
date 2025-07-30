@@ -150,6 +150,22 @@ definitions:
           example: 2024-01-01T12:00:00Z
         type: string
     type: object
+  handlers.GetOrganizationsResponse:
+    properties:
+      organization_name:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/handlers.OrganizationUser'
+        type: array
+    type: object
+  handlers.GetRolesResponse:
+    properties:
+      roles:
+        items:
+          $ref: '#/definitions/models.Role'
+        type: array
+    type: object
   handlers.HealthCheckResponse:
     properties:
       details:
@@ -231,12 +247,21 @@ definitions:
           example: Bearer
         type: string
     type: object
+  handlers.OrganizationUser:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      role_id:
+        type: string
+    type: object
   handlers.RefreshTokenRequest:
     properties:
       token:
         description: |-
           The JWT token to refresh
-          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
         type: string
     required:
     - token
@@ -256,7 +281,7 @@ definitions:
       token:
         description: |-
           The new JWT token
-          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
         type: string
       token_type:
         description: |-
@@ -516,6 +541,31 @@ paths:
       tags:
       - auth
   /api/v1/organizations:
+    get:
+      consumes:
+      - application/json
+      description: Returns the organization name and all users (name, role ID) in
+        it
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetOrganizationsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the user's organization and its users
+      tags:
+      - organizations
     post:
       consumes:
       - application/json
@@ -582,6 +632,31 @@ paths:
       tags:
       - users
   /api/v1/roles:
+    get:
+      consumes:
+      - application/json
+      description: Returns all roles (name, permissions) for the authenticated user's
+        organization
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetRolesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all roles in the user's organization
+      tags:
+      - roles
     post:
       consumes:
       - application/json

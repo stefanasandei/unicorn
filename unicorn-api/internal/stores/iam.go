@@ -20,4 +20,10 @@ type IAMStore interface {
 	CreateAccount(account *models.Account) error
 	GetAccountByEmail(email string) (*models.Account, error)
 	UpdateAccount(account *models.Account) error
+
+	// --- Added for GET /roles and /organizations ---
+	GetAccountByID(accountID string) (*models.Account, error)
+	GetRolesByOrganizationID(orgID string) ([]models.Role, error)
+	GetOrganizationByID(orgID string) (*models.Organization, error)
+	GetAccountsByOrganizationID(orgID string) ([]models.Account, error)
 }

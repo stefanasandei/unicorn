@@ -149,7 +149,7 @@ type LoginResponse struct {
 // swagger:model
 type RefreshTokenRequest struct {
 	// The JWT token to refresh
-	// example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
+	// example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.example_signature
 	Token string `json:"token" binding:"required"`
 }
 
@@ -157,7 +157,7 @@ type RefreshTokenRequest struct {
 // swagger:model
 type RefreshTokenResponse struct {
 	// The new JWT token
-	// example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9sZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
+	// example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiMTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDAwIiwicm9zZV9pZCI6IjEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMCIsImV4cCI6MTcwNDE2ODAwMH0.new_signature
 	Token string `json:"token"`
 	// The type of token
 	// example: Bearer
@@ -555,5 +555,150 @@ func (h *IAMHandler) ValidateToken(c *gin.Context) {
 		},
 		Valid:   true,
 		Message: "Token is valid",
+	})
+}
+
+// --- New Response Structures ---
+
+// GetRolesResponse represents the response for listing roles
+// swagger:model
+type GetRolesResponse struct {
+	Roles []models.Role `json:"roles"`
+}
+
+// GetOrganizationsResponse represents the response for listing organizations and their users
+// swagger:model
+type GetOrganizationsResponse struct {
+	OrganizationName string             `json:"organization_name"`
+	Users            []OrganizationUser `json:"users"`
+}
+
+type OrganizationUser struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	RoleID string `json:"role_id"`
+}
+
+// --- New Handler Methods ---
+
+// GetRoles godoc
+// @Summary      Get all roles in the user's organization
+// @Description  Returns all roles (name, permissions) for the authenticated user's organization
+// @Tags         roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200   {object}  GetRolesResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/roles [get]
+func (h *IAMHandler) GetRoles(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	if token == "" || len(token) < 8 || token[:7] != "Bearer " {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Missing or invalid Authorization header",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	claims, err := auth.ValidateToken(token[7:], h.config)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Invalid token",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	account, err := h.store.GetAccountByID(claims.AccountID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Account not found",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	roles, err := h.store.GetRolesByOrganizationID(account.OrganizationID.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:      err.Error(),
+			StatusCode: http.StatusInternalServerError,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, GetRolesResponse{Roles: roles})
+}
+
+// GetOrganizations godoc
+// @Summary      Get the user's organization and its users
+// @Description  Returns the organization name and all users (name, role ID) in it
+// @Tags         organizations
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200   {object}  GetOrganizationsResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/organizations [get]
+func (h *IAMHandler) GetOrganizations(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	if token == "" || len(token) < 8 || token[:7] != "Bearer " {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Missing or invalid Authorization header",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	claims, err := auth.ValidateToken(token[7:], h.config)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Invalid token",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	account, err := h.store.GetAccountByID(claims.AccountID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Account not found",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	org, err := h.store.GetOrganizationByID(account.OrganizationID.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:      err.Error(),
+			StatusCode: http.StatusInternalServerError,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	users, err := h.store.GetAccountsByOrganizationID(account.OrganizationID.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:      err.Error(),
+			StatusCode: http.StatusInternalServerError,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+	var orgUsers []OrganizationUser
+	for _, u := range users {
+		orgUsers = append(orgUsers, OrganizationUser{
+			ID:     u.ID.String(),
+			Name:   u.Name,
+			RoleID: u.RoleID.String(),
+		})
+	}
+	c.JSON(http.StatusOK, GetOrganizationsResponse{
+		OrganizationName: org.Name,
+		Users:            orgUsers,
 	})
 }
