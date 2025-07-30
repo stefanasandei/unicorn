@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  entry:
+    build:
+      dockerfile: ./entry/Dockerfile
+      context: ./
+    ports:
+      - "3000:3000"
+    environment:
+      - SERVER_ADDR=0.0.0.0:3000
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_ADDR=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      dockerfile: ./worker/Dockerfile
+      context: ./
+    environment:
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_ADDR=amqp://guest:guest@rabbitmq:5672/
+      - ENV=PROD
+      - RUNTIMES_DIR=../runtimes
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    scale: 3
+
+  redis:
+    image: "redis/redis-stack-server:latest"
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: "rabbitmq:3.12-management"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 15s
+      timeout: 30s
+      retries: 5

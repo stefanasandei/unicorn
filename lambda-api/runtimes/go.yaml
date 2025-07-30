@@ -1,0 +1,17 @@
+name: go
+versions: [1.20]
+extension: go
+
+nix_pkgs: ["pkgs.go"]
+
+compile: ["go", "build", "-o", "<output>", "<entry>"]
+run: ["<output>"]
+
+tests:
+  - output: hello go!
+    code: |
+      package main
+      import "fmt"
+      func main() {
+          fmt.Print("hello go!")
+      }

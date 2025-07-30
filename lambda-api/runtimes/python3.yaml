@@ -1,0 +1,12 @@
+name: python3
+versions: [3.12]
+extension: py
+
+nix_pkgs: ["pkgs.python312"]
+
+run: ["python3", "<entry>"]
+
+tests:
+  - output: hello python3!
+    code: |
+      print("hello python3!")
