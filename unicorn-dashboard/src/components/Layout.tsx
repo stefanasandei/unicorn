@@ -29,6 +29,7 @@ import {
   HardDrive,
   Activity,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -45,6 +46,8 @@ const navigation = [
   { name: "Compute", href: "/compute", icon: Server },
   { name: "Databases", href: "/rdb", icon: HardDrive },
   { name: "Lambda", href: "/lambda", icon: Code },
+  { name: "Queue", href: "/queue", icon: MessageSquare },
+  { name: "NoSQL", href: "/nosql", icon: Database },
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -73,7 +76,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-secondary/50 text-secondary-foreground border-secondary/20">
+              <Badge
+                variant="secondary"
+                className="bg-secondary/50 text-secondary-foreground border-secondary/20"
+              >
                 {user.organization.name}
               </Badge>
 
@@ -112,7 +118,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <span>Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="hover:bg-destructive/10 text-destructive">
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="hover:bg-destructive/10 text-destructive"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
