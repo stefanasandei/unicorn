@@ -29,6 +29,7 @@ import (
 	"unicorn-api/internal/handlers"
 	"unicorn-api/internal/middleware"
 	"unicorn-api/internal/routes"
+	"unicorn-api/internal/services"
 	"unicorn-api/internal/stores"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +47,7 @@ var (
 )
 
 // setupServices initializes all services and handlers
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler, *handlers.RDBHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler, *handlers.RDBHandler, *handlers.MonitoringHandler) {
 	// Get database path from environment or use default
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
@@ -87,15 +88,25 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
 		log.Fatal("Failed to initialize secrets store:", err)
 	}
 
+	// Setup monitoring store
+	monitoringStore, err := stores.NewGORMMonitoringStore(dbPath)
+	if err != nil {
+		log.Fatal("Failed to initialize monitoring store:", err)
+	}
+
+	// Create monitoring service
+	monitoringService := services.NewMonitoringService(monitoringStore, iamStore)
+
 	// Create handlers
 	iamHandler := handlers.NewIAMHandler(iamStore, cfg)
 	secretsHandler := handlers.NewSecretsHandler(secretsStore, iamStore, cfg)
 	storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
-	computeHandler := handlers.NewComputeHandler(cfg, iamStore)
+	computeHandler := handlers.NewComputeHandler(cfg, iamStore, monitoringService)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
 	rdbHandler := handlers.NewRDBHandler(cfg, iamStore)
+	monitoringHandler := handlers.NewMonitoringHandler(cfg, iamStore, monitoringStore)
 
-	return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler
+	return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler
 }
 
 func main() {
@@ -123,11 +134,11 @@ func main() {
 	router.Use(middleware.CORS())
 
 	// Setup services
-	iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler := setupServices(cfg)
+	iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler := setupServices(cfg)
 
 	// Setup routes
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler, cfg)
 	router.GET("/health", handlers.HealthCheck)
 
 	// Get port from environment or use default

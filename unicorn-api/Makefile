@@ -71,6 +71,17 @@ test-all:
 	@echo "Running comprehensive test suite..."
 	./scripts/run_tests.sh
 
+# Run monitoring tests
+test-monitoring:
+	@echo "Running monitoring service tests..."
+	$(GOTEST) -v ./internal/services/monitoring_service_test.go
+	$(GOTEST) -v ./internal/handlers/monitoring_test.go
+
+# Populate monitoring data
+populate-monitoring:
+	@echo "Populating monitoring database with sample data..."
+	$(GOCMD) run scripts/populate_monitoring_data.go
+
 # Install dependencies
 deps:
 	@echo "Installing dependencies..."

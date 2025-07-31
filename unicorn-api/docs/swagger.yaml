@@ -404,6 +404,60 @@ definitions:
     x-enum-varnames:
     - AccountTypeUser
     - AccountTypeBot
+  models.BillingPeriod:
+    properties:
+      compute_cost:
+        description: Breakdown by resource type
+        type: number
+      created_at:
+        description: The creation timestamp
+        type: string
+      currency:
+        description: The currency for billing
+        type: string
+      id:
+        description: The unique ID of the billing period
+        type: string
+      is_paid:
+        description: Whether the bill has been paid
+        type: boolean
+      lambda_cost:
+        type: number
+      organization:
+        allOf:
+        - $ref: '#/definitions/models.Organization'
+        description: GORM Associations
+      organization_id:
+        description: The ID of the organization
+        type: string
+      paid_at:
+        description: The date when the bill was paid
+        type: string
+      payment_method:
+        description: The payment method used
+        type: string
+      period_end:
+        description: The end of the billing period
+        type: string
+      period_start:
+        description: The start of the billing period
+        type: string
+      rdb_cost:
+        type: number
+      secret_cost:
+        type: number
+      storage_cost:
+        type: number
+      total_cost:
+        description: The total cost for the period
+        type: number
+      transaction_id:
+        description: The transaction ID for the payment
+        type: string
+      updated_at:
+        description: The last update timestamp
+        type: string
+    type: object
   models.ComputeContainerInfo:
     properties:
       created_at:
@@ -577,6 +631,73 @@ definitions:
         example: 2s
         type: string
     type: object
+  models.MonitoringMetrics:
+    properties:
+      cpu_usage:
+        description: |-
+          Real-time metrics
+          Current CPU usage
+        type: number
+      created_at:
+        description: The creation timestamp
+        type: string
+      error_rate:
+        description: Current error rate (errors per second)
+        type: number
+      health_status:
+        description: Health check status
+        type: string
+      id:
+        description: The unique ID of the metrics record
+        type: string
+      last_health_check:
+        description: Last health check timestamp
+        type: string
+      memory_usage:
+        description: Current memory usage
+        type: number
+      network_usage:
+        description: Current network usage
+        type: number
+      organization:
+        allOf:
+        - $ref: '#/definitions/models.Organization'
+        description: GORM Associations
+      organization_id:
+        description: The ID of the organization
+        type: string
+      request_rate:
+        description: Current request rate (requests per second)
+        type: number
+      resource_id:
+        description: The unique identifier of the resource
+        type: string
+      resource_type:
+        allOf:
+        - $ref: '#/definitions/models.ResourceType'
+        description: The type of resource
+      response_time:
+        description: Current response time in milliseconds
+        type: number
+      status:
+        allOf:
+        - $ref: '#/definitions/models.ResourceStatus'
+        description: |-
+          Status information
+          Current status of the resource
+      storage_usage:
+        description: Current storage usage
+        type: number
+    type: object
+  models.MonthlyUsageTrend:
+    properties:
+      month:
+        type: string
+      resources:
+        type: integer
+      total_cost:
+        type: number
+    type: object
   models.Organization:
     properties:
       accounts:
@@ -712,6 +833,277 @@ definitions:
     required:
     - name
     - size
+    type: object
+  models.ResourceStatus:
+    enum:
+    - active
+    - inactive
+    - deleted
+    type: string
+    x-enum-varnames:
+    - ResourceStatusActive
+    - ResourceStatusInactive
+    - ResourceStatusDeleted
+  models.ResourceType:
+    enum:
+    - compute
+    - lambda
+    - storage
+    - rdb
+    - secret
+    type: string
+    x-enum-varnames:
+    - ResourceTypeCompute
+    - ResourceTypeLambda
+    - ResourceTypeStorage
+    - ResourceTypeRDB
+    - ResourceTypeSecret
+  models.ResourceUsage:
+    properties:
+      account:
+        allOf:
+        - $ref: '#/definitions/models.Account'
+        description: GORM Associations
+      account_id:
+        description: The ID of the account that owns this resource
+        type: string
+      configuration:
+        description: |-
+          Additional metadata
+          Resource configuration (JSON)
+        type: string
+      cost_per_hour:
+        description: |-
+          Billing information
+          Cost per hour in USD
+        type: number
+      cpu_usage:
+        description: |-
+          Usage metrics
+          CPU usage in percentage (0-100)
+        type: number
+      created_at:
+        description: The creation timestamp
+        type: string
+      currency:
+        description: 'Currency for billing (default: USD)'
+        type: string
+      execution_time:
+        description: Execution time in seconds
+        type: number
+      id:
+        description: The unique ID of the usage record
+        type: string
+      last_active_at:
+        description: When the resource was last active
+        type: string
+      last_updated_at:
+        description: When this usage record was last updated
+        type: string
+      memory_usage:
+        description: Memory usage in MB
+        type: number
+      network_usage:
+        description: Network usage in MB
+        type: number
+      notes:
+        description: Notes or comments
+        type: string
+      organization:
+        $ref: '#/definitions/models.Organization'
+      organization_id:
+        description: The ID of the organization this account belongs to
+        type: string
+      request_count:
+        description: Number of requests/executions
+        type: integer
+      resource_created_at:
+        description: |-
+          Timestamps for usage tracking
+          When the resource was created
+        type: string
+      resource_id:
+        description: The unique identifier of the resource
+        type: string
+      resource_name:
+        description: The name of the resource
+        type: string
+      resource_type:
+        allOf:
+        - $ref: '#/definitions/models.ResourceType'
+        description: The type of resource (compute, lambda, storage, rdb, secret)
+      status:
+        allOf:
+        - $ref: '#/definitions/models.ResourceStatus'
+        description: The current status of the resource
+      storage_usage:
+        description: Storage usage in MB
+        type: number
+      tags:
+        description: Resource tags (JSON)
+        type: string
+      total_cost:
+        description: Total cost for this usage period
+        type: number
+      updated_at:
+        description: The last update timestamp
+        type: string
+    type: object
+  models.ResourceUsageHistory:
+    properties:
+      account:
+        allOf:
+        - $ref: '#/definitions/models.Account'
+        description: GORM Associations
+      account_id:
+        description: The ID of the account that owns this resource
+        type: string
+      avg_cpu_usage:
+        description: |-
+          Historical metrics
+          Average CPU usage for the period
+        type: number
+      avg_memory_usage:
+        description: Average memory usage for the period
+        type: number
+      created_at:
+        description: The creation timestamp
+        type: string
+      currency:
+        description: Currency for billing
+        type: string
+      duration_hours:
+        description: Duration in hours
+        type: number
+      id:
+        description: The unique ID of the history record
+        type: string
+      organization:
+        $ref: '#/definitions/models.Organization'
+      organization_id:
+        description: The ID of the organization this account belongs to
+        type: string
+      peak_cpu_usage:
+        description: Peak CPU usage for the period
+        type: number
+      peak_memory_usage:
+        description: Peak memory usage for the period
+        type: number
+      period_end:
+        description: End of the period
+        type: string
+      period_start:
+        description: |-
+          Time period
+          Start of the period
+        type: string
+      resource_id:
+        description: The unique identifier of the resource
+        type: string
+      resource_name:
+        description: The name of the resource
+        type: string
+      resource_type:
+        allOf:
+        - $ref: '#/definitions/models.ResourceType'
+        description: The type of resource
+      total_cost:
+        description: |-
+          Billing information
+          Total cost for the period
+        type: number
+      total_execution_time:
+        description: Total execution time for the period
+        type: number
+      total_network_usage:
+        description: Total network usage for the period
+        type: number
+      total_requests:
+        description: Total requests for the period
+        type: integer
+      total_storage_usage:
+        description: Total storage usage for the period
+        type: number
+    type: object
+  models.ResourceUsageRequest:
+    properties:
+      configuration:
+        description: Optional metadata
+        type: string
+      cost_per_hour:
+        description: Optional billing
+        type: number
+      cpu_usage:
+        description: Optional metrics
+        type: number
+      currency:
+        type: string
+      execution_time:
+        type: number
+      memory_usage:
+        type: number
+      network_usage:
+        type: number
+      notes:
+        type: string
+      request_count:
+        type: integer
+      resource_id:
+        type: string
+      resource_name:
+        type: string
+      resource_type:
+        $ref: '#/definitions/models.ResourceType'
+      status:
+        $ref: '#/definitions/models.ResourceStatus'
+      storage_usage:
+        type: number
+      tags:
+        type: string
+    required:
+    - resource_id
+    - resource_name
+    - resource_type
+    - status
+    type: object
+  models.ResourceUsageResponse:
+    properties:
+      billing_period:
+        $ref: '#/definitions/models.BillingPeriod'
+      current_usage:
+        $ref: '#/definitions/models.ResourceUsage'
+      historical_usage:
+        items:
+          $ref: '#/definitions/models.ResourceUsageHistory'
+        type: array
+      metrics:
+        $ref: '#/definitions/models.MonitoringMetrics'
+      summary:
+        $ref: '#/definitions/models.ResourceUsageSummary'
+    type: object
+  models.ResourceUsageSummary:
+    properties:
+      active_resources:
+        type: integer
+      cost_by_type:
+        additionalProperties:
+          format: float64
+          type: number
+        type: object
+      currency:
+        type: string
+      monthly_trend:
+        items:
+          $ref: '#/definitions/models.MonthlyUsageTrend'
+        type: array
+      total_cost:
+        type: number
+      total_resources:
+        type: integer
+      usage_by_type:
+        additionalProperties:
+          type: integer
+        type: object
     type: object
   models.Role:
     properties:
@@ -1320,6 +1712,442 @@ paths:
       summary: Login
       tags:
       - IAM
+  /api/v1/monitoring/billing:
+    get:
+      consumes:
+      - application/json
+      description: Get billing history for the current organization
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.BillingPeriod'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get billing history
+      tags:
+      - Monitoring
+  /api/v1/monitoring/billing/generate:
+    post:
+      consumes:
+      - application/json
+      description: Generate monthly billing for a specific month
+      parameters:
+      - description: Year
+        in: query
+        name: year
+        required: true
+        type: integer
+      - description: Month (1-12)
+        in: query
+        name: month
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.BillingPeriod'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Generate monthly billing
+      tags:
+      - Monitoring
+  /api/v1/monitoring/metrics/{resource_type}/{resource_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get real-time monitoring metrics for a specific resource
+      parameters:
+      - description: Resource ID
+        in: path
+        name: resource_id
+        required: true
+        type: string
+      - description: Resource Type
+        in: path
+        name: resource_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MonitoringMetrics'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get monitoring metrics for a resource
+      tags:
+      - Monitoring
+    put:
+      consumes:
+      - application/json
+      description: Update real-time monitoring metrics for a specific resource
+      parameters:
+      - description: Resource ID
+        in: path
+        name: resource_id
+        required: true
+        type: string
+      - description: Resource Type
+        in: path
+        name: resource_type
+        required: true
+        type: string
+      - description: Monitoring metrics
+        in: body
+        name: metrics
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Update monitoring metrics for a resource
+      tags:
+      - Monitoring
+  /api/v1/monitoring/resources/active:
+    get:
+      consumes:
+      - application/json
+      description: Get all active resources for the current organization
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ResourceUsage'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get active resources
+      tags:
+      - Monitoring
+  /api/v1/monitoring/track/{resource_type}/{resource_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Track when a resource is deleted
+      parameters:
+      - description: Resource ID
+        in: path
+        name: resource_id
+        required: true
+        type: string
+      - description: Resource Type
+        in: path
+        name: resource_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Track resource deletion
+      tags:
+      - Monitoring
+    put:
+      consumes:
+      - application/json
+      description: Track when a resource is updated
+      parameters:
+      - description: Resource ID
+        in: path
+        name: resource_id
+        required: true
+        type: string
+      - description: Resource Type
+        in: path
+        name: resource_type
+        required: true
+        type: string
+      - description: Update request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Track resource update
+      tags:
+      - Monitoring
+  /api/v1/monitoring/track/create:
+    post:
+      consumes:
+      - application/json
+      description: Track when a new resource is created
+      parameters:
+      - description: Resource usage request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResourceUsageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Track resource creation
+      tags:
+      - Monitoring
+  /api/v1/monitoring/trends:
+    get:
+      consumes:
+      - application/json
+      description: Get monthly usage trends for the current organization
+      parameters:
+      - description: 'Number of months (default: 6)'
+        in: query
+        name: months
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.MonthlyUsageTrend'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get monthly usage trends
+      tags:
+      - Monitoring
+  /api/v1/monitoring/usage:
+    get:
+      consumes:
+      - application/json
+      description: Get a summary of resource usage for the current organization
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ResourceUsageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get resource usage summary
+      tags:
+      - Monitoring
   /api/v1/organizations:
     get:
       consumes:

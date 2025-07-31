@@ -27,6 +27,7 @@ import {
   Home,
   Building,
   HardDrive,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -36,7 +37,7 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Monitoring", href: "/monitoring", icon: Activity },
   { name: "IAM", href: "/iam", icon: Shield },
   { name: "Secrets", href: "/secrets", icon: Database },
   { name: "Storage", href: "/storage", icon: FileText },

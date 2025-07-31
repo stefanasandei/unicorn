@@ -131,6 +131,7 @@ import (
         "unicorn-api/internal/handlers"
         "unicorn-api/internal/middleware"
         "unicorn-api/internal/routes"
+        "unicorn-api/internal/services"
         "unicorn-api/internal/stores"
 
         "github.com/gin-gonic/gin"
@@ -148,7 +149,7 @@ var (
 )
 
 // setupServices initializes all services and handlers
-func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler, *handlers.RDBHandler) {
+func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageHandler, *handlers.ComputeHandler, *handlers.LambdaHandler, *handlers.SecretsHandler, *handlers.RDBHandler, *handlers.MonitoringHandler) {
         // Get database path from environment or use default
         dbPath := os.Getenv("DB_PATH")
         if dbPath == "" {
@@ -166,41 +167,51 @@ func setupServices(cfg *config.Config) (*handlers.IAMHandler, *handlers.StorageH
         if err != nil {
                 log.Fatal("Failed to initialize IAM store:", err)
         }
-        if err := iamS</span><span class="cov0" title="0">tore.SeedAdmin(cfg); err != nil {
-                log.Fatal("Failed to seed admin:", err)
-</span>        }
+</span>        if err := iamStore.SeedAdmin(cfg); err != nil {
+</span>                log.Fatal("Failed to seed admin:", err)
+        }
 
-        <span class="cov0" title="0">// Setup storage store
-        storagePath := os.Getenv("STORAGE_PATH")
-        if storagePath ==</span> "" {
+        // Setup storage store
+        storagePath := os</span>.Getenv("STORAGE_PATH")
+        if storagePath == "" {
                 storagePath = "./storage"
         }
-        if err := o<span class="cov0" title="0">s.MkdirAll(storagePath, 0755); err != nil {
+        if err := os.MkdirAll(storagePath, 0755); err != nil {
                 log.Fatal("Failed to create storage directory:", err)
         }
-        storageStore, err := stores.NewGORMStorageStore(dbPath, storagePath)
+        storageStore, err := stores.NewGORMSto</span><span class="cov0" title="0">rageStore(dbPath, storagePath)
         if err != nil {
-</span>                log.Fatal("Failed to initialize storage store:", err)
-        }</span>
-
-        // Setup secrets store
-        <span class="cov0" title="0">secretsStore, err := stores.NewSecretStore(dbPath)
-        if err != nil {
-                log.Fatal("Failed to initialize secrets store:", err)
+                </span>log.Fatal("Failed to initialize storage store:", err)
         }
-</span>
-        /</span>/ Create handlers
+
+        <span class="cov0" title="0">// Setup secrets store
+        secretsStore, err := stores.NewSecretStore(dbPath)
+        if err != nil {
+                log.Fatal("Failed to initialize se</span><span class="cov0" title="0">crets store:", err)
+        }
+
+</span>        // Setup monitoring store
+        monitoringStore, err := stores.NewGORMMonitoringStore(dbPath)
+        <span class="cov0" title="0">if err != nil {
+                log.Fatal("Failed to initialize monitoring store:", err)
+        }
+
+        // Create monitoring service
+        monitoringService := services.NewMonitoringService(monitoringStore, iamStore)
+
+        // Create handlers
         iamHandler := handlers.NewIAMHandler(iamStore, cfg)
         secretsHandler := handlers.NewSecretsHandler(secretsStore, iamStore, cfg)
-        <span class="cov0" title="0">storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
-        computeHandler := handlers.NewComputeHandler(cfg, iamStore)
+        storageHandler := handlers.NewStorageHandler(storageStore, iamStore, cfg)
+        computeHandler := handlers.NewComputeHandler(cfg, iamStore, monitoringService)
         lambdaHandler := handlers.NewLambdaHandler(cfg, iamStore)
         rdbHandler := handlers.NewRDBHandler(cfg, iamStore)
+        monitoringHandler := handlers.NewMonitoringHandler(cfg, iamStore, monitoringStore)
 
-        return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler
+        return iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler
 }
-
-func main() {
+</span>
+fu</span>nc main() {
         log.Println("Starting Unicorn API...")
 
         // Load environment variables
@@ -209,27 +220,27 @@ func main() {
         }
 
         // Initialize configuration
-        cfg := config.</span><span class="cov0" title="0">New()
+</span>        cfg := config.New()
 
-        /</span>/ Set Gin mode
+</span>        // Set Gin mode
         if cfg.Environment == "production" {
-        <span class="cov0" title="0">        gin.SetMode(gin.ReleaseMode)
+                gin.SetMode(gin.ReleaseMode)
         }
 
         // Create router
         router := gin.New()
 
         // Add middleware
-</span>        router.Use(middleware.Logger())
-        r</span>outer.Use(middleware.Recovery())
+        router.Use(middleware.Logger())
+        router.Use(middleware.Recovery())
         router.Use(middleware.CORS())
 
         // Setup services
-        iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler := setupServices(cfg)
+        iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler := setupServices(cfg)
 
         // Setup routes
         router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
+        routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler, cfg)
         router.GET("/health", handlers.HealthCheck)
 
         // Get port from environment or use default
@@ -1057,6 +1068,682 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/monitoring/billing": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get billing history for the current organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Get billing history",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.BillingPeriod"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/billing/generate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate monthly billing for a specific month",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Generate monthly billing",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Month (1-12)",
+                        "name": "month",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.BillingPeriod"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/metrics/{resource_type}/{resource_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+            <span class="cov0" title="0">    "description": "Get real-time monitoring metrics for a specific resource",
+                "consumes": [
+ </span>                   "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Get monitoring metrics for a resource",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource ID",
+                        "name": "resource_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource Type",
+                        "name": "resource_type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MonitoringMetrics"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update real-time monitoring metrics for a specific resource",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Update monitoring metrics for a resource",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource ID",
+                        "name": "resource_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource Type",
+                        "name": "resource_type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Monitoring metrics",
+                        "name": "metrics",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/resources/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all active resources for the current organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Get active resources",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ResourceUsage"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/track/create": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Track when a new resource is created",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Track resource creation",
+                "parameters": [
+                    {
+                        "description": "Resource usage request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ResourceUsageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/track/{resource_type}/{resource_id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Track when a resource is updated",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Track resource update",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource ID",
+                        "name": "resource_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource Type",
+                        "name": "resource_type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Track when a resource is deleted",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Track resource deletion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource ID",
+                        "name": "resource_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource Type",
+                        "name": "resource_type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/trends": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get monthly usage trends for the current organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Get monthly usage trends",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of months (default: 6)",
+                        "name": "months",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MonthlyUsageTrend"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/monitoring/usage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a summary of resource usage for the current organization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitoring"
+                ],
+                "summary": "Get resource usage summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ResourceUsageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organizations": {
             "get": {
                 "security": [
@@ -1187,9 +1874,9 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-            <span class="cov0" title="0">            "schema": {
+                        "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
- </span>                       }
+                        }
                     }
                 }
             }
@@ -2354,6 +3041,83 @@ const docTemplate = `{
                 "AccountTypeBot"
             ]
         },
+        "models.BillingPeriod": {
+            "type": "object",
+            "properties": {
+                "compute_cost": {
+                    "description": "Breakdown by resource type",
+                    "type": "number"
+                },
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "The currency for billing",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique ID of the billing period",
+                    "type": "string"
+                },
+                "is_paid": {
+                    "description": "Whether the bill has been paid",
+                    "type": "boolean"
+                },
+                "lambda_cost": {
+                    "type": "number"
+                },
+                "organization": {
+                    "description": "GORM Associations",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    ]
+                },
+                "organization_id": {
+                    "description": "The ID of the organization",
+                    "type": "string"
+                },
+                "paid_at": {
+                    "description": "The date when the bill was paid",
+                    "type": "string"
+                },
+                "payment_method": {
+                    "description": "The payment method used",
+                    "type": "string"
+                },
+                "period_end": {
+                    "description": "The end of the billing period",
+                    "type": "string"
+                },
+                "period_start": {
+                    "description": "The start of the billing period",
+                    "type": "string"
+                },
+                "rdb_cost": {
+                    "type": "number"
+                },
+                "secret_cost": {
+                    "type": "number"
+                },
+                "storage_cost": {
+                    "type": "number"
+                },
+                "total_cost": {
+                    "description": "The total cost for the period",
+                    "type": "number"
+                },
+                "transaction_id": {
+                    "description": "The transaction ID for the payment",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp",
+                    "type": "string"
+                }
+            }
+        },
         "models.ComputeContainerInfo": {
             "type": "object",
             "properties": {
@@ -2600,6 +3364,101 @@ const docTemplate = `{
                 }
             }
         },
+        "models.MonitoringMetrics": {
+            "type": "object",
+            "properties": {
+                "cpu_usage": {
+                    "description": "Real-time metrics\nCurrent CPU usage",
+                    "type": "number"
+                },
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "error_rate": {
+                    "description": "Current error rate (errors per second)",
+                    "type": "number"
+                },
+                "health_status": {
+                    "description": "Health check status",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The unique ID of the metrics record",
+                    "type": "string"
+                },
+                "last_health_check": {
+                    "description": "Last health check timestamp",
+                    "type": "string"
+                },
+                "memory_usage": {
+                    "description": "Current memory usage",
+                    "type": "number"
+                },
+                "network_usage": {
+                    "description": "Current network usage",
+                    "type": "number"
+                },
+                "organization": {
+                    "description": "GORM Associations",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Organization"
+                        }
+                    ]
+                },
+                "organization_id": {
+                    "description": "The ID of the organization",
+                    "type": "string"
+                },
+                "request_rate": {
+                    "description": "Current request rate (requests per second)",
+                    "type": "number"
+                },
+                "resource_id": {
+                    "description": "The unique identifier of the resource",
+                    "type": "string"
+                },
+                "resource_type": {
+                    "description": "The type of resource",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ResourceType"
+                        }
+                    ]
+                },
+                "response_time": {
+                    "description": "Current response time in milliseconds",
+                    "type": "number"
+                },
+                "status": {
+                    "description": "Status information\nCurrent status of the resource",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ResourceStatus"
+                        }
+                    ]
+                },
+                "storage_usage": {
+                    "description": "Current storage usage",
+                    "type": "number"
+                }
+            }
+        },
+        "models.MonthlyUsageTrend": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "string"
+                },
+                "resources": {
+                    "type": "integer"
+                },
+                "total_cost": {
+                    "type": "number"
+                }
+            }
+        },
         "models.Organization": {
             "type": "object",
             "properties": {
@@ -2766,21 +3625,385 @@ const docTemplate = `{
         "models.RDBVolume": {
             "type": "object",
             "required": [
-                "mount_path",
                 "name",
                 "size"
             ],
             "properties": {
-                "mount_path": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "size": {
-                    "description": "Size in GB",
+                    "description": "Size in MB",
                     "type": "integer",
                     "minimum": 1
+                }
+            }
+        },
+        "models.ResourceStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "inactive",
+                "deleted"
+            ],
+            "x-enum-varnames": [
+                "ResourceStatusActive",
+                "ResourceStatusInactive",
+                "ResourceStatusDeleted"
+            ]
+        },
+        "models.ResourceType": {
+            "type": "string",
+            "enum": [
+                "compute",
+                "lambda",
+                "storage",
+                "rdb",
+                "secret"
+            ],
+            "x-enum-varnames": [
+                "ResourceTypeCompute",
+                "ResourceTypeLambda",
+                "ResourceTypeStorage",
+                "ResourceTypeRDB",
+                "ResourceTypeSecret"
+            ]
+        },
+        "models.ResourceUsage": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "description": "GORM Associations",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Account"
+                        }
+                    ]
+                },
+                "account_id": {
+                    "description": "The ID of the account that owns this resource",
+                    "type": "string"
+                },
+                "configuration": {
+                    "description": "Additional metadata\nResource configuration (JSON)",
+                    "type": "string"
+                },
+                "cost_per_hour": {
+                    "description": "Billing information\nCost per hour in USD",
+                    "type": "number"
+                },
+                "cpu_usage": {
+                    "description": "Usage metrics\nCPU usage in percentage (0-100)",
+                    "type": "number"
+                },
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "Currency for billing (default: USD)",
+                    "type": "string"
+                },
+                "execution_time": {
+                    "description": "Execution time in seconds",
+                    "type": "number"
+                },
+                "id": {
+                    "description": "The unique ID of the usage record",
+                    "type": "string"
+                },
+                "last_active_at": {
+                    "description": "When the resource was last active",
+                    "type": "string"
+                },
+                "last_updated_at": {
+                    "description": "When this usage record was last updated",
+                    "type": "string"
+                },
+                "memory_usage": {
+                    "description": "Memory usage in MB",
+                    "type": "number"
+                },
+                "network_usage": {
+                    "description": "Network usage in MB",
+                    "type": "number"
+                },
+                "notes": {
+                    "description": "Notes or comments",
+                    "type": "string"
+                },
+                "organization": {
+                    "$ref": "#/definitions/models.Organization"
+                },
+                "organization_id": {
+                    "description": "The ID of the organization this account belongs to",
+                    "type": "string"
+                },
+                "request_count": {
+                    "description": "Number of requests/executions",
+                    "type": "integer"
+                },
+                "resource_created_at": {
+                    "description": "Timestamps for usage tracking\nWhen the resource was created",
+                    "type": "string"
+                },
+                "resource_id": {
+                    "description": "The unique identifier of the resource",
+                    "type": "string"
+                },
+                "resource_name": {
+                    "description": "The name of the resource",
+                    "type": "string"
+                },
+                "resource_type": {
+                    "description": "The type of resource (compute, lambda, storage, rdb, secret)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ResourceType"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "The current status of the resource",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ResourceStatus"
+                        }
+                    ]
+                },
+                "storage_usage": {
+                    "description": "Storage usage in MB",
+                    "type": "number"
+                },
+                "tags": {
+                    "description": "Resource tags (JSON)",
+                    "type": "string"
+                },
+                "total_cost": {
+                    "description": "Total cost for this usage period",
+                    "type": "number"
+                },
+                "updated_at": {
+                    "description": "The last update timestamp",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResourceUsageHistory": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "description": "GORM Associations",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Account"
+                        }
+                    ]
+                },
+                "account_id": {
+                    "description": "The ID of the account that owns this resource",
+                    "type": "string"
+                },
+                "avg_cpu_usage": {
+                    "description": "Historical metrics\nAverage CPU usage for the period",
+                    "type": "number"
+                },
+                "avg_memory_usage": {
+                    "description": "Average memory usage for the period",
+                    "type": "number"
+                },
+                "created_at": {
+                    "description": "The creation timestamp",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "Currency for billing",
+                    "type": "string"
+                },
+                "duration_hours": {
+                    "description": "Duration in hours",
+                    "type": "number"
+                },
+                "id": {
+                    "description": "The unique ID of the history record",
+                    "type": "string"
+                },
+                "organization": {
+                    "$ref": "#/definitions/models.Organization"
+                },
+                "organization_id": {
+                    "description": "The ID of the organization this account belongs to",
+                    "type": "string"
+                },
+                "peak_cpu_usage": {
+                    "description": "Peak CPU usage for the period",
+                    "type": "number"
+                },
+                "peak_memory_usage": {
+                    "description": "Peak memory usage for the period",
+                    "type": "number"
+                },
+                "period_end": {
+                    "description": "End of the period",
+                    "type": "string"
+                },
+                "period_start": {
+                    "description": "Time period\nStart of the period",
+                    "type": "string"
+                },
+                "resource_id": {
+                    "description": "The unique identifier of the resource",
+                    "type": "string"
+                },
+                "resource_name": {
+                    "description": "The name of the resource",
+                    "type": "string"
+                },
+                "resource_type": {
+                    "description": "The type of resource",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ResourceType"
+                        }
+                    ]
+                },
+                "total_cost": {
+                    "description": "Billing information\nTotal cost for the period",
+                    "type": "number"
+                },
+                "total_execution_time": {
+                    "description": "Total execution time for the period",
+                    "type": "number"
+                },
+                "total_network_usage": {
+                    "description": "Total network usage for the period",
+                    "type": "number"
+                },
+                "total_requests": {
+                    "description": "Total requests for the period",
+                    "type": "integer"
+                },
+                "total_storage_usage": {
+                    "description": "Total storage usage for the period",
+                    "type": "number"
+                }
+            }
+        },
+        "models.ResourceUsageRequest": {
+            "type": "object",
+            "required": [
+                "resource_id",
+                "resource_name",
+                "resource_type",
+                "status"
+            ],
+            "properties": {
+                "configuration": {
+                    "description": "Optional metadata",
+                    "type": "string"
+                },
+                "cost_per_hour": {
+                    "description": "Optional billing",
+                    "type": "number"
+                },
+                "cpu_usage": {
+                    "description": "Optional metrics",
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "execution_time": {
+                    "type": "number"
+                },
+                "memory_usage": {
+                    "type": "number"
+                },
+                "network_usage": {
+                    "type": "number"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "request_count": {
+                    "type": "integer"
+                },
+                "resource_id": {
+                    "type": "string"
+                },
+                "resource_name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "$ref": "#/definitions/models.ResourceType"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.ResourceStatus"
+                },
+                "storage_usage": {
+                    "type": "number"
+                },
+                "tags": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResourceUsageResponse": {
+            "type": "object",
+            "properties": {
+                "billing_period": {
+                    "$ref": "#/definitions/models.BillingPeriod"
+                },
+                "current_usage": {
+                    "$ref": "#/definitions/models.ResourceUsage"
+                },
+                "historical_usage": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ResourceUsageHistory"
+                    }
+                },
+                "metrics": {
+                    "$ref": "#/definitions/models.MonitoringMetrics"
+                },
+                "summary": {
+                    "$ref": "#/definitions/models.ResourceUsageSummary"
+                }
+            }
+        },
+        "models.ResourceUsageSummary": {
+            "type": "object",
+            "properties": {
+                "active_resources": {
+                    "type": "integer"
+                },
+                "cost_by_type": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "monthly_trend": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.MonthlyUsageTrend"
+                    }
+                },
+                "total_cost": {
+                    "type": "number"
+                },
+                "total_resources": {
+                    "type": "integer"
+                },
+                "usage_by_type": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -4086,7 +5309,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, config *config.Config) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, monitoringHandler *handlers.MonitoringHandler, config *config.Config) {
         </span><span class="cov0" title="0">// API v1 group
         v1 := router.Group("/api/v1")
         {
@@ -4140,6 +5363,18 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
                         protected.POST("/rdb/create", rdbHandler.CreateRDB)
                         protected.GET("/rdb/list", rdbHandler.ListRDB)
                         protected.DELETE("/rdb/:id", rdbHandler.DeleteRDB)
+
+                        // Monitoring routes
+                        protected.GET("/monitoring/usage", monitoringHandler.GetResourceUsage)
+                        protected.GET("/monitoring/metrics/:resource_type/:resource_id", monitoringHandler.GetMonitoringMetrics)
+                        protected.PUT("/monitoring/metrics/:resource_type/:resource_id", monitoringHandler.UpdateMonitoringMetrics)
+                        protected.GET("/monitoring/billing", monitoringHandler.GetBillingHistory)
+                        protected.POST("/monitoring/billing/generate", monitoringHandler.GenerateMonthlyBilling)
+                        protected.GET("/monitoring/trends", monitoringHandler.GetMonthlyUsageTrends)
+                        protected.GET("/monitoring/resources/active", monitoringHandler.GetActiveResources)
+                        protected.POST("/monitoring/track/create", monitoringHandler.TrackResourceCreation)
+                        protected.PUT("/monitoring/track/:resource_type/:resource_id", monitoringHandler.TrackResourceUpdate)
+                        protected.DELETE("/monitoring/track/:resource_type/:resource_id", monitoringHandler.TrackResourceDeletion)
                 }
         }
 }

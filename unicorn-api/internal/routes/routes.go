@@ -9,7 +9,7 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, config *config.Config) {
+func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, monitoringHandler *handlers.MonitoringHandler, config *config.Config) {
 	// API v1 group
 	v1 := router.Group("/api/v1")
 	{
@@ -63,6 +63,18 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
 			protected.POST("/rdb/create", rdbHandler.CreateRDB)
 			protected.GET("/rdb/list", rdbHandler.ListRDB)
 			protected.DELETE("/rdb/:id", rdbHandler.DeleteRDB)
+
+			// Monitoring routes
+			protected.GET("/monitoring/usage", monitoringHandler.GetResourceUsage)
+			protected.GET("/monitoring/metrics/:resource_type/:resource_id", monitoringHandler.GetMonitoringMetrics)
+			protected.PUT("/monitoring/metrics/:resource_type/:resource_id", monitoringHandler.UpdateMonitoringMetrics)
+			protected.GET("/monitoring/billing", monitoringHandler.GetBillingHistory)
+			protected.POST("/monitoring/billing/generate", monitoringHandler.GenerateMonthlyBilling)
+			protected.GET("/monitoring/trends", monitoringHandler.GetMonthlyUsageTrends)
+			protected.GET("/monitoring/resources/active", monitoringHandler.GetActiveResources)
+			protected.POST("/monitoring/track/create", monitoringHandler.TrackResourceCreation)
+			protected.PUT("/monitoring/track/:resource_type/:resource_id", monitoringHandler.TrackResourceUpdate)
+			protected.DELETE("/monitoring/track/:resource_type/:resource_id", monitoringHandler.TrackResourceDeletion)
 		}
 	}
 }

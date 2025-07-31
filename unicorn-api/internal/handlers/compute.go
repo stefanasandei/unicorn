@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,19 +20,21 @@ import (
 
 // ComputeHandler handles compute-related operations
 type ComputeHandler struct {
-	service   *services.ComputeService
-	validator *validation.Validator
-	config    *config.Config
-	iamStore  stores.IAMStore
+	service           *services.ComputeService
+	monitoringService *services.MonitoringService
+	validator         *validation.Validator
+	config            *config.Config
+	iamStore          stores.IAMStore
 }
 
 // NewComputeHandler creates a new compute handler
-func NewComputeHandler(cfg *config.Config, iamStore stores.IAMStore) *ComputeHandler {
+func NewComputeHandler(cfg *config.Config, iamStore stores.IAMStore, monitoringService *services.MonitoringService) *ComputeHandler {
 	return &ComputeHandler{
-		service:   services.NewComputeService(),
-		validator: validation.NewValidator(),
-		config:    cfg,
-		iamStore:  iamStore,
+		service:           services.NewComputeService(),
+		monitoringService: monitoringService,
+		validator:         validation.NewValidator(),
+		config:            cfg,
+		iamStore:          iamStore,
 	}
 }
 
@@ -99,6 +103,27 @@ func (h *ComputeHandler) CreateCompute(c *gin.Context) {
 	if err != nil {
 		errors.RespondWithError(c, err)
 		return
+	}
+
+	// Track resource creation for monitoring
+	if h.monitoringService != nil {
+		// Get account to get organization ID
+		account, err := h.iamStore.GetAccountByID(claims.AccountID)
+		if err == nil {
+			configuration := fmt.Sprintf(`{"image":"%s","preset":"%s"}`, req.Image, req.Preset)
+			err = h.monitoringService.TrackResourceCreation(
+				userID,
+				account.OrganizationID,
+				models.ResourceTypeCompute,
+				containerInfo.ID,
+				req.Name,
+				configuration,
+			)
+			if err != nil {
+				// Log the error but don't fail the request
+				log.Printf("Failed to track resource creation: %v", err)
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, containerInfo)
@@ -185,6 +210,15 @@ func (h *ComputeHandler) DeleteCompute(c *gin.Context) {
 	if err := h.service.DeleteContainer(userID, containerID); err != nil {
 		errors.RespondWithError(c, err)
 		return
+	}
+
+	// Track resource deletion for monitoring
+	if h.monitoringService != nil {
+		err = h.monitoringService.TrackResourceDeletion(containerID, models.ResourceTypeCompute)
+		if err != nil {
+			// Log the error but don't fail the request
+			log.Printf("Failed to track resource deletion: %v", err)
+		}
 	}
 
 	c.Status(http.StatusNoContent)

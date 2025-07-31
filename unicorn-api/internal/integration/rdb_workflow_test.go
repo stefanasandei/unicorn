@@ -15,6 +15,7 @@ import (
 	"unicorn-api/internal/handlers"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/routes"
+	"unicorn-api/internal/services"
 	"unicorn-api/internal/stores"
 )
 
@@ -22,22 +23,27 @@ func setupRDBTestServer() *gin.Engine {
 	_ = os.Remove("test.db") // Ensure fresh DB for each test
 	cfg := config.New()
 	cfg.JWTSecret = "test-secret" // Ensure consistent JWT secret for test
-
 	store, _ := stores.NewGORMIAMStore("test.db")
-	_ = store.SeedAdmin(cfg)
-	iamHandler := handlers.NewIAMHandler(store, cfg)
-	computeHandler := handlers.NewComputeHandler(cfg, store)
 	secretsStore, err := stores.NewSecretStore("test.db")
 	if err != nil {
 		panic("failed to initialize secrets store: " + err.Error())
 	}
+	monitoringStore, err := stores.NewGORMMonitoringStore("test.db")
+	if err != nil {
+		panic("failed to initialize monitoring store: " + err.Error())
+	}
+	monitoringService := services.NewMonitoringService(monitoringStore, store)
+
+	_ = store.SeedAdmin(cfg)
+	iamHandler := handlers.NewIAMHandler(store, cfg)
+	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
+	computeHandler := handlers.NewComputeHandler(cfg, store, monitoringService)
 	storageHandler := handlers.NewStorageHandler(&stores.GORMStorageStore{}, store, cfg)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
-	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
 	rdbHandler := handlers.NewRDBHandler(cfg, store)
-
+	monitoringHandler := handlers.NewMonitoringHandler(cfg, store, monitoringStore)
 	router := gin.Default()
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler, cfg)
 	return router
 }
 
@@ -73,17 +79,16 @@ func TestRDBCreateAndList(t *testing.T) {
 	// Test PostgreSQL instance creation
 	t.Run("Create PostgreSQL Instance", func(t *testing.T) {
 		createReq := models.RDBCreateRequest{
-			Name:   "test-postgres",
-			Type:   models.RDBTypePostgreSQL,
-			Preset: models.RDBPresetMicro,
+			Name:     "test-postgres",
+			Type:     models.RDBTypePostgreSQL,
+			Preset:   models.RDBPresetSmall,
 			Database: "testdb",
 			Username: "testuser",
 			Password: "testpass123",
 			Volumes: []models.RDBVolume{
 				{
-					Name:      "data",
-					Size:      1,
-					MountPath: "/var/lib/postgresql/data",
+					Name: "data",
+					Size: 1,
 				},
 			},
 		}
@@ -109,9 +114,9 @@ func TestRDBCreateAndList(t *testing.T) {
 	// Test MySQL instance creation
 	t.Run("Create MySQL Instance", func(t *testing.T) {
 		createReq := models.RDBCreateRequest{
-			Name:   "test-mysql",
-			Type:   models.RDBTypeMySQL,
-			Preset: models.RDBPresetSmall,
+			Name:     "test-mysql",
+			Type:     models.RDBTypeMySQL,
+			Preset:   models.RDBPresetSmall,
 			Database: "testdb",
 			Username: "testuser",
 			Password: "testpass123",
@@ -248,4 +253,4 @@ func TestRDBPermissionChecks(t *testing.T) {
 		router.ServeHTTP(createW, createRequest)
 		assert.Equal(t, http.StatusForbidden, createW.Code)
 	})
-} 
+}

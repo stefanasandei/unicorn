@@ -280,6 +280,31 @@ class ApiClient {
   async deleteRDB(id: string): Promise<void> {
     await this.client.delete(`/api/v1/rdb/${id}`);
   }
+
+  // Monitoring endpoints
+  async getResourceUsage(): Promise<any> {
+    const response = await this.client.get("/api/v1/monitoring/usage");
+    return response.data;
+  }
+
+  async getBillingHistory(): Promise<any[]> {
+    const response = await this.client.get("/api/v1/monitoring/billing");
+    return response.data;
+  }
+
+  async getMonthlyTrends(months: number = 6): Promise<any[]> {
+    const response = await this.client.get(
+      `/api/v1/monitoring/trends?months=${months}`
+    );
+    return response.data;
+  }
+
+  async getActiveResources(): Promise<any[]> {
+    const response = await this.client.get(
+      "/api/v1/monitoring/resources/active"
+    );
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

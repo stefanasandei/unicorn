@@ -15,6 +15,7 @@ import (
 	"unicorn-api/internal/handlers"
 	"unicorn-api/internal/models"
 	"unicorn-api/internal/routes"
+	"unicorn-api/internal/services"
 	"unicorn-api/internal/stores"
 )
 
@@ -27,16 +28,22 @@ func setupTestServer() *gin.Engine {
 	if err != nil {
 		panic("failed to initialize secrets store: " + err.Error())
 	}
+	monitoringStore, err := stores.NewGORMMonitoringStore("test.db")
+	if err != nil {
+		panic("failed to initialize monitoring store: " + err.Error())
+	}
+	monitoringService := services.NewMonitoringService(monitoringStore, store)
 
 	_ = store.SeedAdmin(cfg)
 	iamHandler := handlers.NewIAMHandler(store, cfg)
 	secretsHandler := handlers.NewSecretsHandler(secretsStore, store, cfg)
-	computeHandler := handlers.NewComputeHandler(cfg, store)
+	computeHandler := handlers.NewComputeHandler(cfg, store, monitoringService)
 	storageHandler := handlers.NewStorageHandler(&stores.GORMStorageStore{}, store, cfg)
 	lambdaHandler := handlers.NewLambdaHandler(cfg, store)
 	rdbHandler := handlers.NewRDBHandler(cfg, store)
+	monitoringHandler := handlers.NewMonitoringHandler(cfg, store, monitoringStore)
 	router := gin.Default()
-	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, cfg)
+	routes.SetupRoutes(router, iamHandler, storageHandler, computeHandler, lambdaHandler, secretsHandler, rdbHandler, monitoringHandler, cfg)
 	return router
 }
 
