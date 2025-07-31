@@ -10,9 +10,9 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 
-	"binomeway.com/common/broker"
-	"binomeway.com/worker/model"
-	"binomeway.com/worker/repository/worker"
+	"github.com/common/broker"
+	"github.com/worker/model"
+	"github.com/worker/repository/worker"
 )
 
 type App struct {

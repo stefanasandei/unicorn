@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Eye, EyeOff } from 'lucide-react';
+import { Shield, Eye, EyeOff, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -36,52 +36,58 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <Shield className="h-6 w-6 text-blue-600" />
+          <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-primary/20 border border-primary/20">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-primary/80">
+              <Sparkles className="h-6 w-6 text-primary-foreground" />
+            </div>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+          <h2 className="mt-6 text-3xl font-bold text-foreground">
+            Welcome back
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in to your Unicorn Dashboard account
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
             Or{' '}
-            <Link href="/onboarding" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/onboarding" className="font-medium text-primary hover:text-primary/80 transition-colors">
               start onboarding to create your organization
             </Link>
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>
+        <Card className="border-border/50 shadow-theme-lg">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-foreground">Sign In</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Enter your credentials to access your dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+                  <AlertDescription className="text-destructive">{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-foreground">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
+                  className="border-border/50 focus:border-primary focus:ring-primary/20"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-foreground">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -89,13 +95,14 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
+                    className="border-border/50 focus:border-primary focus:ring-primary/20 pr-10"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -107,8 +114,19 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign in'}
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-theme" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
+                    <span>Signing in...</span>
+                  </div>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
             </form>
           </CardContent>

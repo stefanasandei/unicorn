@@ -309,3 +309,83 @@ func (h *SecretsHandler) DeleteSecret(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+// RotateKeys rotates all keys for the authenticated user
+// @Summary Rotate keys
+// @Description Rotate all encryption keys for the authenticated user
+// @Tags Secrets Manager
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
+// @Router /api/v1/secrets/rotate-keys [post]
+func (h *SecretsHandler) RotateKeys(c *gin.Context) {
+	claims, err := h.getClaimsFromRequest(c)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	// Check if user has write permission
+	if !h.hasPermission(claims, models.Write) {
+		errors.RespondWithPermissionError(c, "rotate keys")
+		return
+	}
+
+	userID, err := uuid.Parse(claims.AccountID)
+	if err != nil {
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
+		return
+	}
+
+	if err := h.service.RotateKeys(userID); err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Keys rotated successfully",
+		"user_id": userID,
+	})
+}
+
+// GetKeyVersions gets all key versions for the authenticated user
+// @Summary Get key versions
+// @Description Get all key versions for the authenticated user
+// @Tags Secrets Manager
+// @Security BearerAuth
+// @Success 200 {array} stores.KeyVersion
+// @Failure 400 {object} errors.AppError
+// @Failure 401 {object} errors.AppError
+// @Failure 403 {object} errors.AppError
+// @Failure 500 {object} errors.AppError
+// @Router /api/v1/secrets/key-versions [get]
+func (h *SecretsHandler) GetKeyVersions(c *gin.Context) {
+	claims, err := h.getClaimsFromRequest(c)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	// Check if user has read permission
+	if !h.hasPermission(claims, models.Read) {
+		errors.RespondWithPermissionError(c, "view key versions")
+		return
+	}
+
+	userID, err := uuid.Parse(claims.AccountID)
+	if err != nil {
+		errors.RespondWithError(c, errors.ErrUnauthorized.WithDetails("Invalid user ID in token"))
+		return
+	}
+
+	versions, err := h.service.GetKeyVersions(userID)
+	if err != nil {
+		errors.RespondWithError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, versions)
+}

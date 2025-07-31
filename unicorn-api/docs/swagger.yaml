@@ -1154,6 +1154,8 @@ definitions:
         type: string
       id:
         type: string
+      key_version:
+        type: integer
       metadata:
         type: string
       name:
@@ -1193,6 +1195,23 @@ definitions:
         type: string
       value:
         type: string
+    type: object
+  stores.KeyVersion:
+    properties:
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      key_hash:
+        type: string
+      user_id:
+        type: string
+      version:
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -2616,6 +2635,67 @@ paths:
       security:
       - BearerAuth: []
       summary: Update secret
+      tags:
+      - Secrets Manager
+  /api/v1/secrets/key-versions:
+    get:
+      description: Get all key versions for the authenticated user
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/stores.KeyVersion'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Get key versions
+      tags:
+      - Secrets Manager
+  /api/v1/secrets/rotate-keys:
+    post:
+      description: Rotate all encryption keys for the authenticated user
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/errors.AppError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.AppError'
+      security:
+      - BearerAuth: []
+      summary: Rotate keys
       tags:
       - Secrets Manager
   /api/v1/token/refresh:

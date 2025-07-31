@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 
-	"binomeway.com/worker/model"
+	"github.com/google/uuid"
+
 	"github.com/redis/go-redis/v9"
+	"github.com/worker/model"
 )
 
 type RedisWorkerRepository struct {

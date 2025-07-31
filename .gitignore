@@ -1,3 +1,4 @@
 *.db
 *.txt
 *.out
+./unicorn-api/storage

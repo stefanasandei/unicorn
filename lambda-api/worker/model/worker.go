@@ -1,12 +1,13 @@
 package model
 
 import (
-	"binomeway.com/common/model"
 	"errors"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/common/model"
 
 	"github.com/google/uuid"
 	"github.com/shirou/gopsutil/cpu"

@@ -31,7 +31,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Shield, Users, Building, Plus, Edit, Trash2 } from "lucide-react";
+import {
+  Shield,
+  Users,
+  Building,
+  Plus,
+  Edit,
+  Trash2,
+  UserCheck,
+  Key,
+  Crown,
+  Settings,
+  AlertCircle,
+} from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { Role, Organization } from "@/types/api";
 
@@ -39,7 +51,12 @@ export default function IAMPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [organization, setOrganization] = useState<{
     organization_name: string;
-    users: any[];
+    users: Array<{
+      id: string;
+      name: string;
+      email: string;
+      role_id?: string;
+    }>;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,8 +82,9 @@ export default function IAMPage() {
       ]);
       setRoles(rolesData.roles);
       setOrganization(orgData);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to fetch IAM data");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to fetch IAM data");
     } finally {
       setIsLoading(false);
     }
@@ -86,8 +104,9 @@ export default function IAMPage() {
       setNewRoleName("");
       setNewRolePermissions([]);
       fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to create role");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to create role");
     }
   };
 
@@ -116,22 +135,36 @@ export default function IAMPage() {
       setNewUserPassword("");
       setSelectedRoleId("");
       fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to create user");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to create user");
     }
   };
 
   const permissions = [
-    { id: 0, name: "Read", description: "View resources" },
-    { id: 1, name: "Write", description: "Create and modify resources" },
-    { id: 2, name: "Delete", description: "Delete resources" },
+    { id: 0, name: "Read", description: "View resources", icon: "👁️" },
+    {
+      id: 1,
+      name: "Write",
+      description: "Create and modify resources",
+      icon: "✏️",
+    },
+    { id: 2, name: "Delete", description: "Delete resources", icon: "🗑️" },
   ];
+
+  const getRoleIcon = (roleName: string) => {
+    if (roleName.toLowerCase().includes("admin"))
+      return <Crown className="h-4 w-4 text-yellow-500" />;
+    if (roleName.toLowerCase().includes("user"))
+      return <UserCheck className="h-4 w-4 text-blue-500" />;
+    return <Shield className="h-4 w-4 text-primary" />;
+  };
 
   if (isLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </Layout>
     );
@@ -139,82 +172,163 @@ export default function IAMPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Identity & Access Management
-          </h1>
-          <p className="text-gray-600">
-            Manage roles, users, and permissions for your organization
-          </p>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/20">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                Identity & Access Management
+              </h1>
+              <p className="text-muted-foreground">
+                Manage roles, users, and permissions for your organization
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Total Roles
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Shield className="h-4 w-4 text-blue-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {roles.length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Active roles in system
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Total Users
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Users className="h-4 w-4 text-green-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {organization?.users.length || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Active users</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Organization
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Building className="h-4 w-4 text-purple-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold text-foreground truncate">
+                {organization?.organization_name || "N/A"}
+              </div>
+              <p className="text-xs text-muted-foreground">Current org</p>
+            </CardContent>
+          </Card>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 flex items-center space-x-2">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <p className="text-destructive">{error}</p>
           </div>
         )}
 
-        <Tabs defaultValue="roles" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="roles" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+        <Tabs defaultValue="roles" className="space-y-6">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger
+              value="roles"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Shield className="h-4 w-4 mr-2" />
               Roles
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Users className="h-4 w-4 mr-2" />
               Users
             </TabsTrigger>
             <TabsTrigger
               value="organization"
-              className="flex items-center gap-2"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              <Building className="h-4 w-4" />
+              <Building className="h-4 w-4 mr-2" />
               Organization
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="roles" className="space-y-4">
-            <Card>
+          <TabsContent value="roles" className="space-y-6">
+            <Card className="border-border/50">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Roles</CardTitle>
+                    <CardTitle className="text-foreground">
+                      Roles & Permissions
+                    </CardTitle>
                     <CardDescription>
-                      Manage roles and their permissions
+                      Manage roles and their associated permissions
                     </CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button className="bg-primary hover:bg-primary/90">
                         <Plus className="h-4 w-4 mr-2" />
                         Create Role
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="border-border/50">
                       <DialogHeader>
-                        <DialogTitle>Create New Role</DialogTitle>
+                        <DialogTitle className="text-foreground">
+                          Create New Role
+                        </DialogTitle>
                         <DialogDescription>
                           Create a new role with specific permissions
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="role-name">Role Name</Label>
+                          <Label
+                            htmlFor="role-name"
+                            className="text-foreground"
+                          >
+                            Role Name
+                          </Label>
                           <Input
                             id="role-name"
                             value={newRoleName}
                             onChange={(e) => setNewRoleName(e.target.value)}
                             placeholder="Enter role name"
+                            className="border-border/50 focus:border-primary focus:ring-primary/20"
                           />
                         </div>
                         <div>
-                          <Label>Permissions</Label>
-                          <div className="space-y-2 mt-2">
+                          <Label className="text-foreground">Permissions</Label>
+                          <div className="space-y-3 mt-3">
                             {permissions.map((permission) => (
                               <label
                                 key={permission.id}
-                                className="flex items-center space-x-2"
+                                className="flex items-center space-x-3 p-3 rounded-lg border border-border/50 hover:bg-accent/30 transition-colors cursor-pointer"
                               >
                                 <input
                                   type="checkbox"
@@ -235,133 +349,179 @@ export default function IAMPage() {
                                       );
                                     }
                                   }}
+                                  className="rounded border-border/50 focus:ring-primary/20"
                                 />
-                                <span className="text-sm">
-                                  <strong>{permission.name}</strong> -{" "}
-                                  {permission.description}
+                                <span className="text-lg">
+                                  {permission.icon}
                                 </span>
+                                <div>
+                                  <span className="text-sm font-medium text-foreground">
+                                    {permission.name}
+                                  </span>
+                                  <p className="text-xs text-muted-foreground">
+                                    {permission.description}
+                                  </p>
+                                </div>
                               </label>
                             ))}
                           </div>
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button onClick={handleCreateRole}>Create Role</Button>
+                        <Button
+                          onClick={handleCreateRole}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          Create Role
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 </div>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Role Name</TableHead>
-                      <TableHead>Permissions</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {roles.map((role) => (
-                      <TableRow key={role.id}>
-                        <TableCell className="font-medium">
-                          {role.name}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {role.permissions.map((permission) => (
-                              <Badge
-                                key={`perm:${permission.id}`}
-                                variant="secondary"
-                              >
-                                {permission.name}
-                              </Badge>
-                            ))}
+                <div className="space-y-4">
+                  {roles.map((role) => (
+                    <div
+                      key={role.id}
+                      className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 rounded-lg bg-accent/50">
+                            {getRoleIcon(role.name)}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(role.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <div>
+                            <h3 className="font-medium text-foreground">
+                              {role.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Created{" "}
+                              {new Date(role.created_at).toLocaleDateString()}
+                            </p>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-border/50"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-border/50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {role.permissions.map((permission) => (
+                          <Badge
+                            key={`perm:${permission.id}`}
+                            variant="secondary"
+                            className="bg-accent/50 text-accent-foreground"
+                          >
+                            {permission.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="users" className="space-y-4">
-            <Card>
+          <TabsContent value="users" className="space-y-6">
+            <Card className="border-border/50">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Users</CardTitle>
+                    <CardTitle className="text-foreground">Users</CardTitle>
                     <CardDescription>
                       Manage users in your organization
                     </CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button className="bg-primary hover:bg-primary/90">
                         <Plus className="h-4 w-4 mr-2" />
                         Create User
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="border-border/50">
                       <DialogHeader>
-                        <DialogTitle>Create New User</DialogTitle>
+                        <DialogTitle className="text-foreground">
+                          Create New User
+                        </DialogTitle>
                         <DialogDescription>
                           Create a new user account
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="user-name">Name</Label>
+                          <Label
+                            htmlFor="user-name"
+                            className="text-foreground"
+                          >
+                            Name
+                          </Label>
                           <Input
                             id="user-name"
                             value={newUserName}
                             onChange={(e) => setNewUserName(e.target.value)}
                             placeholder="Enter user name"
+                            className="border-border/50 focus:border-primary focus:ring-primary/20"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="user-email">Email</Label>
+                          <Label
+                            htmlFor="user-email"
+                            className="text-foreground"
+                          >
+                            Email
+                          </Label>
                           <Input
                             id="user-email"
                             type="email"
                             value={newUserEmail}
                             onChange={(e) => setNewUserEmail(e.target.value)}
                             placeholder="Enter user email"
+                            className="border-border/50 focus:border-primary focus:ring-primary/20"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="user-password">Password</Label>
+                          <Label
+                            htmlFor="user-password"
+                            className="text-foreground"
+                          >
+                            Password
+                          </Label>
                           <Input
                             id="user-password"
                             type="password"
                             value={newUserPassword}
                             onChange={(e) => setNewUserPassword(e.target.value)}
                             placeholder="Enter user password"
+                            className="border-border/50 focus:border-primary focus:ring-primary/20"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="user-role">Role</Label>
+                          <Label
+                            htmlFor="user-role"
+                            className="text-foreground"
+                          >
+                            Role
+                          </Label>
                           <select
                             id="user-role"
                             value={selectedRoleId}
                             onChange={(e) => setSelectedRoleId(e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md"
+                            className="w-full p-2 border border-border/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary/20"
                           >
                             <option value="">Select a role</option>
                             {roles.map((role) => (
@@ -373,7 +533,12 @@ export default function IAMPage() {
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button onClick={handleCreateUser}>Create User</Button>
+                        <Button
+                          onClick={handleCreateUser}
+                          className="bg-primary hover:bg-primary/90"
+                        >
+                          Create User
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -381,65 +546,106 @@ export default function IAMPage() {
               </CardHeader>
               <CardContent>
                 {organization && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {organization.users.map((user: any) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">
-                            {user.name}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{user.role_id}</Badge>
-                          </TableCell>
-                          <TableCell>
+                  <div className="space-y-4">
+                    {organization.users.map((user) => (
+                      <div
+                        key={user.id}
+                        className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 rounded-lg bg-accent/50">
+                              <UserCheck className="h-4 w-4 text-accent-foreground" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-foreground">
+                                {user.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {user.email}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Badge
+                              variant="outline"
+                              className="bg-secondary/20"
+                            >
+                              {user.role_id}
+                            </Badge>
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-border/50"
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="outline" size="sm">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-border/50"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="organization" className="space-y-4">
-            <Card>
+          <TabsContent value="organization" className="space-y-6">
+            <Card className="border-border/50">
               <CardHeader>
-                <CardTitle>Organization Details</CardTitle>
+                <CardTitle className="text-foreground">
+                  Organization Details
+                </CardTitle>
                 <CardDescription>
                   Information about your organization
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {organization && (
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        Organization Name
-                      </h3>
-                      <p className="text-gray-600">
-                        {organization.organization_name}
-                      </p>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-4 rounded-lg bg-accent/20 border border-accent/30">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Building className="h-5 w-5 text-primary" />
+                          <h3 className="font-medium text-foreground">
+                            Organization Name
+                          </h3>
+                        </div>
+                        <p className="text-muted-foreground">
+                          {organization.organization_name}
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-accent/20 border border-accent/30">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Users className="h-5 w-5 text-primary" />
+                          <h3 className="font-medium text-foreground">
+                            Total Users
+                          </h3>
+                        </div>
+                        <p className="text-muted-foreground">
+                          {organization.users.length} users
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">Total Users</h3>
-                      <p className="text-gray-600">
-                        {organization.users.length}
+                    <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Settings className="h-5 w-5 text-primary" />
+                        <h3 className="font-medium text-foreground">
+                          Organization Settings
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Manage your organization&apos;s settings, billing, and
+                        preferences from the organization dashboard.
                       </p>
                     </div>
                   </div>

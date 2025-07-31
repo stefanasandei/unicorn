@@ -1,10 +1,11 @@
 package application
 
 import (
-	common "binomeway.com/common/model"
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	common "github.com/common/model"
 	"github.com/google/uuid"
 )
 

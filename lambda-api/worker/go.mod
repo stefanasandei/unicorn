@@ -1,11 +1,11 @@
-module binomeway.com/worker
+module github.com/worker
 
 go 1.20
 
 require github.com/shirou/gopsutil v3.21.11+incompatible
 
 require (
-	binomeway.com/common v0.0.1
+	github.com/common v0.0.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.4.0
@@ -14,7 +14,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0
 )
 
-replace binomeway.com/common => ../common
+replace github.com/common => ../common
 
 require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

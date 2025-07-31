@@ -3,8 +3,8 @@ package worker
 import (
 	"context"
 
-	"binomeway.com/worker/model"
 	"github.com/google/uuid"
+	"github.com/worker/model"
 )
 
 type WorkerRepository interface {

@@ -3,7 +3,7 @@ package model
 import (
 	"sync"
 
-	"binomeway.com/common/broker"
+	"github.com/common/broker"
 )
 
 type ReplyQueue struct {

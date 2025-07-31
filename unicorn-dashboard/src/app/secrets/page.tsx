@@ -23,14 +23,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -51,6 +43,11 @@ import {
   Copy,
   Check,
   AlertCircle,
+  Lock,
+  Shield,
+  Key,
+  Zap,
+  Clock
 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { Secret } from "@/types/api";
@@ -104,10 +101,11 @@ export default function SecretsPage() {
       setIsLoading(true);
       const secretsData = await apiClient.listSecrets();
       setSecrets(secretsData);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; details?: string } } };
       const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.details ||
+        error.response?.data?.message ||
+        error.response?.data?.details ||
         "Failed to fetch secrets";
       setErrorMessage(errorMsg);
       setShowErrorDialog(true);
@@ -184,12 +182,13 @@ export default function SecretsPage() {
       setNewSecretMetadata("");
       setShowCreateDialog(false);
       fetchSecrets();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Create secret error:", err);
-      console.error("Error response:", err.response?.data);
+      console.error("Error response:", (err as any).response?.data);
+      const error = err as { response?: { data?: { message?: string; details?: string } } };
       const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.details ||
+        error.response?.data?.message ||
+        error.response?.data?.details ||
         "Failed to create secret";
       setErrorMessage(errorMsg);
       setShowErrorDialog(true);
@@ -230,10 +229,11 @@ export default function SecretsPage() {
       setEditSecretMetadata("");
       setShowEditDialog(false);
       fetchSecrets();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; details?: string } } };
       const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.details ||
+        error.response?.data?.message ||
+        error.response?.data?.details ||
         "Failed to update secret";
       setErrorMessage(errorMsg);
       setShowErrorDialog(true);
@@ -244,10 +244,11 @@ export default function SecretsPage() {
     try {
       await apiClient.deleteSecret(secretId);
       fetchSecrets();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; details?: string } } };
       const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.details ||
+        error.response?.data?.message ||
+        error.response?.data?.details ||
         "Failed to delete secret";
       setErrorMessage(errorMsg);
       setShowErrorDialog(true);
@@ -260,10 +261,11 @@ export default function SecretsPage() {
       await navigator.clipboard.writeText(secret.value);
       setCopiedSecret(secretId);
       setTimeout(() => setCopiedSecret(null), 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; details?: string } } };
       const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.details ||
+        error.response?.data?.message ||
+        error.response?.data?.details ||
         "Failed to copy secret";
       setErrorMessage(errorMsg);
       setShowErrorDialog(true);
@@ -302,9 +304,10 @@ export default function SecretsPage() {
           [secretId]: true,
         }));
       } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string; details?: string } } };
         const errorMsg =
-          (err as any)?.response?.data?.message ||
-          (err as any)?.response?.data?.details ||
+          error.response?.data?.message ||
+          error.response?.data?.details ||
           "Failed to reveal secret";
         setErrorMessage(errorMsg);
         setShowErrorDialog(true);
@@ -348,7 +351,7 @@ export default function SecretsPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </Layout>
     );
@@ -356,107 +359,130 @@ export default function SecretsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Secrets Manager</h1>
-          <p className="text-gray-600">
-            Manage encrypted secrets for your applications
-          </p>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/20">
+              <Lock className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Secrets Manager</h1>
+              <p className="text-muted-foreground">
+                Manage encrypted secrets for your applications
+              </p>
+            </div>
+          </div>
           {apiConnected !== null && (
-            <div
-              className={`mt-2 text-sm ${
-                apiConnected ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              API Status: {apiConnected ? "Connected" : "Not Connected"}
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${apiConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className={`text-sm ${apiConnected ? 'text-green-600' : 'text-red-600'}`}>
+                API Status: {apiConnected ? "Connected" : "Not Connected"}
+              </span>
             </div>
           )}
         </div>
 
-        <Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">Total Secrets</CardTitle>
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Database className="h-4 w-4 text-blue-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{secrets.length}</div>
+              <p className="text-xs text-muted-foreground">Encrypted secrets</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">With Metadata</CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Key className="h-4 w-4 text-green-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {secrets.filter(s => s.metadata).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Secrets with metadata</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">Security</CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Shield className="h-4 w-4 text-purple-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">AES-256</div>
+              <p className="text-xs text-muted-foreground">Encryption standard</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="border-border/50">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Secrets</CardTitle>
+                <CardTitle className="text-foreground">Secrets</CardTitle>
                 <CardDescription>
                   Store and manage encrypted secrets securely
                 </CardDescription>
               </div>
-              <Button onClick={() => setShowCreateDialog(true)}>
+              <Button onClick={() => setShowCreateDialog(true)} className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Secret
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Metadata</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {secrets.map((secret) => (
-                  <TableRow key={secret.id}>
-                    <TableCell className="font-medium">{secret.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-sm">
-                          {loadingSecrets[secret.id]
-                            ? "Loading..."
-                            : showValues[secret.id]
-                            ? revealedSecrets[secret.id] || "••••••••"
-                            : "••••••••"}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleSecretValue(secret.id)}
-                          disabled={loadingSecrets[secret.id]}
-                        >
-                          {loadingSecrets[secret.id] ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          ) : showValues[secret.id] ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
+            <div className="space-y-4">
+              {secrets.map((secret) => (
+                <div key={secret.id} className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-lg bg-accent/50">
+                        <Lock className="h-4 w-4 text-accent-foreground" />
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {secret.metadata ? (
-                        <Badge variant="secondary">
-                          {(() => {
+                      <div>
+                        <h3 className="font-medium text-foreground">{secret.name}</h3>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Created {new Date(secret.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-secondary/20">
+                        {secret.metadata ? (
+                          (() => {
                             try {
                               const parsed = JSON.parse(secret.metadata);
-                              return Object.keys(parsed).length;
+                              return `${Object.keys(parsed).length} keys`;
                             } catch {
-                              return 1;
+                              return "1 key";
                             }
-                          })()}{" "}
-                          keys
-                        </Badge>
-                      ) : (
-                        <span className="text-gray-400">None</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(secret.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
+                          })()
+                        ) : (
+                          "No metadata"
+                        )}
+                      </Badge>
+                      <div className="flex space-x-1">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleCopySecret(secret.id)}
+                          className="border-border/50"
                         >
                           {copiedSecret === secret.id ? (
-                            <Check className="h-4 w-4" />
+                            <Check className="h-4 w-4 text-green-500" />
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
@@ -465,18 +491,19 @@ export default function SecretsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => openEditDialog(secret)}
+                          className="border-border/50"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" className="border-border/50">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="border-border/50">
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Secret</AlertDialogTitle>
+                              <AlertDialogTitle className="text-foreground">Delete Secret</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Are you sure you want to delete this secret?
                                 This action cannot be undone.
@@ -486,7 +513,7 @@ export default function SecretsPage() {
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => handleDeleteSecret(secret.id)}
-                                className="bg-red-600 hover:bg-red-700"
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Delete
                               </AlertDialogAction>
@@ -494,52 +521,77 @@ export default function SecretsPage() {
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center space-x-2">
+                    <span className="font-mono text-sm bg-muted/50 px-2 py-1 rounded">
+                      {loadingSecrets[secret.id]
+                        ? "Loading..."
+                        : showValues[secret.id]
+                        ? revealedSecrets[secret.id] || "••••••••"
+                        : "••••••••"}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleSecretValue(secret.id)}
+                      disabled={loadingSecrets[secret.id]}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      {loadingSecrets[secret.id] ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                      ) : showValues[secret.id] ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
         {/* Create Secret Dialog */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent>
+          <DialogContent className="border-border/50">
             <DialogHeader>
-              <DialogTitle>Create New Secret</DialogTitle>
+              <DialogTitle className="text-foreground">Create New Secret</DialogTitle>
               <DialogDescription>
                 Create a new encrypted secret
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="secret-name">Secret Name</Label>
+                <Label htmlFor="secret-name" className="text-foreground">Secret Name</Label>
                 <Input
                   id="secret-name"
                   value={newSecretName}
                   onChange={(e) => setNewSecretName(e.target.value)}
                   placeholder="Enter secret name"
+                  className="border-border/50 focus:border-primary focus:ring-primary/20"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Only alphanumeric characters, hyphens, and underscores. Max 50
-                  characters.
+                <p className="text-sm text-muted-foreground mt-1">
+                  Only alphanumeric characters, hyphens, and underscores. Max 50 characters.
                 </p>
               </div>
               <div>
-                <Label htmlFor="secret-value">Secret Value</Label>
+                <Label htmlFor="secret-value" className="text-foreground">Secret Value</Label>
                 <Input
                   id="secret-value"
                   type="password"
                   value={newSecretValue}
                   onChange={(e) => setNewSecretValue(e.target.value)}
                   placeholder="Enter secret value"
+                  className="border-border/50 focus:border-primary focus:ring-primary/20"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Max 10KB. This will be encrypted and stored securely.
                 </p>
               </div>
               <div>
-                <Label htmlFor="secret-metadata">
+                <Label htmlFor="secret-metadata" className="text-foreground">
                   Metadata (JSON - Optional)
                 </Label>
                 <Input
@@ -547,54 +599,58 @@ export default function SecretsPage() {
                   value={newSecretMetadata}
                   onChange={(e) => setNewSecretMetadata(e.target.value)}
                   placeholder='{"key": "value"}'
+                  className="border-border/50 focus:border-primary focus:ring-primary/20"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Optional JSON metadata for the secret
                 </p>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={closeCreateDialog}>
+              <Button variant="outline" onClick={closeCreateDialog} className="border-border/50">
                 Cancel
               </Button>
-              <Button onClick={handleCreateSecret}>Create Secret</Button>
+              <Button onClick={handleCreateSecret} className="bg-primary hover:bg-primary/90">
+                Create Secret
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Edit Secret Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent>
+          <DialogContent className="border-border/50">
             <DialogHeader>
-              <DialogTitle>Edit Secret</DialogTitle>
+              <DialogTitle className="text-foreground">Edit Secret</DialogTitle>
               <DialogDescription>
                 Update the secret value and metadata
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Secret Name</Label>
+                <Label className="text-foreground">Secret Name</Label>
                 <Input
                   value={editingSecret?.name || ""}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-muted/50 border-border/50"
                 />
               </div>
               <div>
-                <Label htmlFor="edit-secret-value">Secret Value</Label>
+                <Label htmlFor="edit-secret-value" className="text-foreground">Secret Value</Label>
                 <Input
                   id="edit-secret-value"
                   type="password"
                   value={editSecretValue}
                   onChange={(e) => setEditSecretValue(e.target.value)}
                   placeholder="Enter new secret value"
+                  className="border-border/50 focus:border-primary focus:ring-primary/20"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Max 10KB. Leave empty to keep current value.
                 </p>
               </div>
               <div>
-                <Label htmlFor="edit-secret-metadata">
+                <Label htmlFor="edit-secret-metadata" className="text-foreground">
                   Metadata (JSON - Optional)
                 </Label>
                 <Input
@@ -602,35 +658,40 @@ export default function SecretsPage() {
                   value={editSecretMetadata}
                   onChange={(e) => setEditSecretMetadata(e.target.value)}
                   placeholder='{"key": "value"}'
+                  className="border-border/50 focus:border-primary focus:ring-primary/20"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Optional JSON metadata for the secret
                 </p>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={closeEditDialog}>
+              <Button variant="outline" onClick={closeEditDialog} className="border-border/50">
                 Cancel
               </Button>
-              <Button onClick={handleUpdateSecret}>Update Secret</Button>
+              <Button onClick={handleUpdateSecret} className="bg-primary hover:bg-primary/90">
+                Update Secret
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Error Dialog */}
         <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-          <DialogContent>
+          <DialogContent className="border-border/50">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-500" />
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <AlertCircle className="h-5 w-5 text-destructive" />
                 Error
               </DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              <p className="text-gray-700">{errorMessage}</p>
+              <p className="text-foreground">{errorMessage}</p>
             </div>
             <DialogFooter>
-              <Button onClick={() => setShowErrorDialog(false)}>OK</Button>
+              <Button onClick={() => setShowErrorDialog(false)} className="bg-primary hover:bg-primary/90">
+                OK
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -1,10 +1,11 @@
-module binomeway.com/entry
+module github.com/entry
 
 go 1.20
 
-require binomeway.com/common v0.0.1
+require github.com/common v0.0.1
+
 replace (
-	binomeway.com/common => ../common
+	github.com/common => ../common
 )
 
 require (

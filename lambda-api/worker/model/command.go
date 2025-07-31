@@ -1,17 +1,18 @@
 package model
 
 import (
-	"binomeway.com/common/model"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/shirou/gopsutil/process"
-	"github.com/xhit/go-str2duration/v2"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/common/model"
+	"github.com/shirou/gopsutil/process"
+	"github.com/xhit/go-str2duration/v2"
 )
 
 func ExecuteSystemCommand(command []string, spec model.ProcessInfo) (model.ProcessResult, error) {

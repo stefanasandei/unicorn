@@ -1,15 +1,16 @@
 package model
 
 import (
-	"binomeway.com/common/model"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/common/model"
+	"github.com/google/uuid"
 )
 
 type Task struct {

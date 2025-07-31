@@ -28,6 +28,7 @@ import {
   Building,
   HardDrive,
   Activity,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -55,29 +56,36 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card border-b border-border shadow-sm backdrop-blur-sm bg-card/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Unicorn Dashboard
-              </h1>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary to-primary/80">
+                  <Sparkles className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+                  Unicorn Dashboard
+                </h1>
+              </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary">{user.organization.name}</Badge>
+              <Badge variant="secondary" className="bg-secondary/50 text-secondary-foreground border-secondary/20">
+                {user.organization.name}
+              </Badge>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-8 w-8 rounded-full"
+                    className="relative h-8 w-8 rounded-full hover:bg-accent/50"
                   >
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-8 w-8 ring-2 ring-primary/20">
                       <AvatarImage src="/avatars/01.png" alt={user.name} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
                         {user.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -86,7 +94,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
+                      <p className="text-sm font-medium leading-none text-foreground">
                         {user.name}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
@@ -95,16 +103,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-accent/50">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem className="hover:bg-accent/50">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout}>
+                  <DropdownMenuItem onClick={logout} className="hover:bg-destructive/10 text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
@@ -117,26 +125,26 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-sm border-r">
-          <nav className="mt-5 px-2">
-            <div className="space-y-1">
+        <aside className="w-64 bg-card/50 border-r border-border backdrop-blur-sm">
+          <nav className="mt-6 px-3">
+            <div className="space-y-2">
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                    className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
                       isActive
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? "bg-primary/10 text-primary border border-primary/20 shadow-sm"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground"
                     }`}
                   >
                     <item.icon
-                      className={`mr-3 flex-shrink-0 h-6 w-6 ${
+                      className={`mr-3 flex-shrink-0 h-5 w-5 transition-colors ${
                         isActive
-                          ? "text-gray-500"
-                          : "text-gray-400 group-hover:text-gray-500"
+                          ? "text-primary"
+                          : "text-muted-foreground group-hover:text-accent-foreground"
                       }`}
                     />
                     {item.name}
@@ -148,8 +156,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1">
-          <div className="py-6">
+        <main className="flex-1 bg-background/50">
+          <div className="py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {children}
             </div>

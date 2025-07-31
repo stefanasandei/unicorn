@@ -1,10 +1,11 @@
 package application
 
 import (
-	common "binomeway.com/common/model"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	common "github.com/common/model"
 )
 
 func (a *App) ExecuteRequest(w http.ResponseWriter, r *http.Request) {

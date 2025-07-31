@@ -130,3 +130,20 @@ func (s *SecretService) ValidateSecretMetadata(metadata string) (map[string]stri
 
 	return metadataMap, nil
 }
+
+// RotateKeys rotates all keys for a user
+func (s *SecretService) RotateKeys(userID uuid.UUID) error {
+	if err := s.store.RotateKeys(userID); err != nil {
+		return errors.ErrInternalError.WithDetails("Failed to rotate keys: " + err.Error())
+	}
+	return nil
+}
+
+// GetKeyVersions gets all key versions for a user
+func (s *SecretService) GetKeyVersions(userID uuid.UUID) ([]stores.KeyVersion, error) {
+	versions, err := s.store.GetKeyVersions(userID)
+	if err != nil {
+		return nil, errors.ErrInternalError.WithDetails("Failed to get key versions: " + err.Error())
+	}
+	return versions, nil
+}

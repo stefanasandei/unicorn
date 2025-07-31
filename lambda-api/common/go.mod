@@ -1,4 +1,4 @@
-module binomeway.com/common
+module github.com/common
 
 go 1.20
 

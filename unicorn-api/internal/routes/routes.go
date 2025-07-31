@@ -41,6 +41,8 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
 			protected.GET("/secrets/:id", secretHandler.ReadSecret)
 			protected.PUT("/secrets/:id", secretHandler.UpdateSecret)
 			protected.DELETE("/secrets/:id", secretHandler.DeleteSecret)
+			protected.POST("/secrets/rotate-keys", secretHandler.RotateKeys)
+			protected.GET("/secrets/key-versions", secretHandler.GetKeyVersions)
 
 			// Storage routes
 			protected.GET("/buckets", storageHandler.ListBucketsHandler)

@@ -24,14 +24,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -50,6 +42,12 @@ import {
   Trash2,
   Folder,
   File,
+  HardDrive,
+  Cloud,
+  Database,
+  AlertCircle,
+  Clock,
+  Zap,
 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { StorageBucket, StorageFile } from "@/types/api";
@@ -76,8 +74,9 @@ export default function StoragePage() {
       setIsLoading(true);
       const bucketsData = await apiClient.listBuckets();
       setBuckets(bucketsData);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to fetch buckets");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to fetch buckets");
     } finally {
       setIsLoading(false);
     }
@@ -87,8 +86,9 @@ export default function StoragePage() {
     try {
       const filesData = await apiClient.listFiles(bucketId);
       setFiles(filesData);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to fetch files");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to fetch files");
     }
   };
 
@@ -102,8 +102,9 @@ export default function StoragePage() {
       await apiClient.createBucket(newBucketName);
       setNewBucketName("");
       fetchBuckets();
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to create bucket");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to create bucket");
     }
   };
 
@@ -117,8 +118,9 @@ export default function StoragePage() {
       await apiClient.uploadFile(selectedBucket.id, uploadFile);
       setUploadFile(null);
       fetchFiles(selectedBucket.id);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to upload file");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to upload file");
     }
   };
 
@@ -135,8 +137,9 @@ export default function StoragePage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to download file");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to download file");
     }
   };
 
@@ -146,8 +149,9 @@ export default function StoragePage() {
     try {
       await apiClient.deleteFile(selectedBucket.id, fileId);
       fetchFiles(selectedBucket.id);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to delete file");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to delete file");
     }
   };
 
@@ -159,11 +163,25 @@ export default function StoragePage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const getFileIcon = (contentType: string) => {
+    if (contentType.startsWith("image/"))
+      return <FileText className="h-4 w-4 text-blue-500" />;
+    if (contentType.startsWith("video/"))
+      return <FileText className="h-4 w-4 text-purple-500" />;
+    if (contentType.startsWith("audio/"))
+      return <FileText className="h-4 w-4 text-green-500" />;
+    if (contentType.includes("pdf"))
+      return <FileText className="h-4 w-4 text-red-500" />;
+    return <FileText className="h-4 w-4 text-muted-foreground" />;
+  };
+
+  const totalStorage = files.reduce((sum, file) => sum + file.size, 0);
+
   if (isLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </Layout>
     );
@@ -171,67 +189,151 @@ export default function StoragePage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Storage</h1>
-          <p className="text-gray-600">Manage your storage buckets and files</p>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/20">
+              <HardDrive className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Storage</h1>
+              <p className="text-muted-foreground">
+                Manage your storage buckets and files
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Total Buckets
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Folder className="h-4 w-4 text-blue-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {buckets.length}
+              </div>
+              <p className="text-xs text-muted-foreground">Storage buckets</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Total Files
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <File className="h-4 w-4 text-green-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {files.length}
+              </div>
+              <p className="text-xs text-muted-foreground">Stored files</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-foreground">
+                Total Storage
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Cloud className="h-4 w-4 text-purple-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">
+                {formatFileSize(totalStorage)}
+              </div>
+              <p className="text-xs text-muted-foreground">Used storage</p>
+            </CardContent>
+          </Card>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 flex items-center space-x-2">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <p className="text-destructive">{error}</p>
           </div>
         )}
 
-        <Tabs defaultValue="buckets" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="buckets" className="flex items-center gap-2">
-              <Folder className="h-4 w-4" />
+        <Tabs defaultValue="buckets" className="space-y-6">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger
+              value="buckets"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Folder className="h-4 w-4 mr-2" />
               Buckets
             </TabsTrigger>
-            <TabsTrigger value="files" className="flex items-center gap-2">
-              <File className="h-4 w-4" />
+            <TabsTrigger
+              value="files"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <File className="h-4 w-4 mr-2" />
               Files
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="buckets" className="space-y-4">
-            <Card>
+          <TabsContent value="buckets" className="space-y-6">
+            <Card className="border-border/50">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Storage Buckets</CardTitle>
+                    <CardTitle className="text-foreground">
+                      Storage Buckets
+                    </CardTitle>
                     <CardDescription>
                       Create and manage storage buckets
                     </CardDescription>
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button className="bg-primary hover:bg-primary/90">
                         <Plus className="h-4 w-4 mr-2" />
                         Create Bucket
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="border-border/50">
                       <DialogHeader>
-                        <DialogTitle>Create New Bucket</DialogTitle>
+                        <DialogTitle className="text-foreground">
+                          Create New Bucket
+                        </DialogTitle>
                         <DialogDescription>
                           Create a new storage bucket
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="bucket-name">Bucket Name</Label>
+                          <Label
+                            htmlFor="bucket-name"
+                            className="text-foreground"
+                          >
+                            Bucket Name
+                          </Label>
                           <Input
                             id="bucket-name"
                             value={newBucketName}
                             onChange={(e) => setNewBucketName(e.target.value)}
                             placeholder="Enter bucket name"
+                            className="border-border/50 focus:border-primary focus:ring-primary/20"
                           />
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button onClick={handleCreateBucket}>
+                        <Button
+                          onClick={handleCreateBucket}
+                          className="bg-primary hover:bg-primary/90"
+                        >
                           Create Bucket
                         </Button>
                       </DialogFooter>
@@ -240,90 +342,104 @@ export default function StoragePage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Bucket Name</TableHead>
-                      <TableHead>Files</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {buckets.map((bucket) => (
-                      <TableRow key={bucket.id}>
-                        <TableCell className="font-medium">
-                          {bucket.name}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
+                <div className="space-y-4">
+                  {buckets.map((bucket) => (
+                    <div
+                      key={bucket.id}
+                      className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 rounded-lg bg-accent/50">
+                            <Folder className="h-4 w-4 text-accent-foreground" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-foreground">
+                              {bucket.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Created{" "}
+                              {new Date(bucket.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Badge variant="outline" className="bg-secondary/20">
                             {bucket.files?.length || 0} files
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(bucket.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedBucket(bucket);
-                                fetchFiles(bucket.id);
-                              }}
-                            >
-                              View Files
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedBucket(bucket);
+                              fetchFiles(bucket.id);
+                            }}
+                            className="border-border/50"
+                          >
+                            View Files
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="files" className="space-y-4">
+          <TabsContent value="files" className="space-y-6">
             {selectedBucket ? (
-              <Card>
+              <Card className="border-border/50">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>Files in {selectedBucket.name}</CardTitle>
+                      <CardTitle className="text-foreground">
+                        Files in {selectedBucket.name}
+                      </CardTitle>
                       <CardDescription>
                         Manage files in this bucket
                       </CardDescription>
                     </div>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button>
+                        <Button className="bg-primary hover:bg-primary/90">
                           <Upload className="h-4 w-4 mr-2" />
                           Upload File
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="border-border/50">
                         <DialogHeader>
-                          <DialogTitle>Upload File</DialogTitle>
+                          <DialogTitle className="text-foreground">
+                            Upload File
+                          </DialogTitle>
                           <DialogDescription>
                             Upload a file to this bucket
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
                           <div>
-                            <Label htmlFor="file-upload">Select File</Label>
+                            <Label
+                              htmlFor="file-upload"
+                              className="text-foreground"
+                            >
+                              Select File
+                            </Label>
                             <Input
                               id="file-upload"
                               type="file"
                               onChange={(e) =>
                                 setUploadFile(e.target.files?.[0] || null)
                               }
+                              className="border-border/50 focus:border-primary focus:ring-primary/20"
                             />
                           </div>
                         </div>
                         <DialogFooter>
-                          <Button onClick={handleUploadFile}>
+                          <Button
+                            onClick={handleUploadFile}
+                            className="bg-primary hover:bg-primary/90"
+                          >
                             Upload File
                           </Button>
                         </DialogFooter>
@@ -332,49 +448,63 @@ export default function StoragePage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>File Name</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Uploaded</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {files.map((file) => (
-                        <TableRow key={file.id}>
-                          <TableCell className="font-medium">
-                            {file.name}
-                          </TableCell>
-                          <TableCell>{formatFileSize(file.size)}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
+                  <div className="space-y-4">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 rounded-lg bg-accent/50">
+                              {getFileIcon(file.content_type)}
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-foreground">
+                                {file.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Uploaded{" "}
+                                {new Date(file.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Badge
+                              variant="outline"
+                              className="bg-secondary/20"
+                            >
+                              {formatFileSize(file.size)}
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="bg-accent/50 text-accent-foreground"
+                            >
                               {file.content_type}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(file.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
+                            <div className="flex space-x-1">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleDownloadFile(file.id)}
+                                className="border-border/50"
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-border/50"
+                                  >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
+                                <AlertDialogContent className="border-border/50">
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>
+                                    <AlertDialogTitle className="text-foreground">
                                       Delete File
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
@@ -388,7 +518,7 @@ export default function StoragePage() {
                                     </AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => handleDeleteFile(file.id)}
-                                      className="bg-red-600 hover:bg-red-700"
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     >
                                       Delete
                                     </AlertDialogAction>
@@ -396,19 +526,22 @@ export default function StoragePage() {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             ) : (
-              <Card>
+              <Card className="border-border/50">
                 <CardContent className="flex items-center justify-center h-32">
-                  <p className="text-gray-500">
-                    Select a bucket to view its files
-                  </p>
+                  <div className="text-center space-y-2">
+                    <Folder className="h-8 w-8 text-muted-foreground mx-auto" />
+                    <p className="text-muted-foreground">
+                      Select a bucket to view its files
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             )}

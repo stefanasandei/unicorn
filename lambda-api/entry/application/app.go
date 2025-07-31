@@ -1,7 +1,6 @@
 package application
 
 import (
-	common "binomeway.com/common/model"
 	"context"
 	"fmt"
 	"log"
@@ -9,8 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"binomeway.com/common/broker"
-	"binomeway.com/entry/model"
+	common "github.com/common/model"
+
+	"github.com/common/broker"
+	"github.com/entry/model"
 	"github.com/redis/go-redis/v9"
 )
 

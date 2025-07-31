@@ -24,6 +24,8 @@ type Secret struct {
 	EncryptedValue string `json:"-" gorm:"not null;type:text"`
 	// The ID of the user who owns the secret
 	UserID uuid.UUID `json:"user_id" gorm:"type:text;not null;index"`
+	// The key version used to encrypt this secret
+	KeyVersion int `json:"key_version" gorm:"not null;default:1"`
 	// Additional metadata for the secret (JSON)
 	Metadata    map[string]string `gorm:"-" json:"metadata"`
 	MetadataRaw string            `gorm:"type:text" json:"-"`
@@ -33,12 +35,13 @@ type Secret struct {
 // swagger:model SecretResponse
 // @description A secret response without sensitive data.
 type SecretResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	UserID    uuid.UUID `json:"user_id"`
-	Metadata  string    `json:"metadata,omitempty"`
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	UserID     uuid.UUID `json:"user_id"`
+	KeyVersion int       `json:"key_version"`
+	Metadata   string    `json:"metadata,omitempty"`
 }
 
 // CreateSecretRequest represents the request to create a new secret

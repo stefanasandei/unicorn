@@ -1,11 +1,12 @@
 package application
 
 import (
-	"binomeway.com/common/broker"
-	common "binomeway.com/common/model"
-	"binomeway.com/worker/model"
 	"encoding/json"
 	"log"
+
+	"github.com/common/broker"
+	common "github.com/common/model"
+	"github.com/worker/model"
 )
 
 func (app *App) HandleQueueMessage(msg broker.DeliveryMessage) error {

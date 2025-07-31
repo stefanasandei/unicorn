@@ -15,7 +15,10 @@ import {
   Users, 
   Building,
   Activity,
-  TrendingUp
+  TrendingUp,
+  Sparkles,
+  ArrowUpRight,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -66,28 +69,32 @@ export default function DashboardPage() {
       description: 'Store encrypted secrets',
       icon: Database,
       href: '/secrets',
-      color: 'bg-blue-500',
+      gradient: 'from-blue-500 to-blue-600',
+      bgGradient: 'from-blue-500/10 to-blue-600/10',
     },
     {
       title: 'Upload File',
       description: 'Upload files to storage',
       icon: FileText,
       href: '/storage',
-      color: 'bg-green-500',
+      gradient: 'from-green-500 to-green-600',
+      bgGradient: 'from-green-500/10 to-green-600/10',
     },
     {
       title: 'Deploy Container',
       description: 'Deploy compute containers',
       icon: Server,
       href: '/compute',
-      color: 'bg-purple-500',
+      gradient: 'from-purple-500 to-purple-600',
+      bgGradient: 'from-purple-500/10 to-purple-600/10',
     },
     {
       title: 'Run Lambda',
       description: 'Execute serverless functions',
       icon: Code,
       href: '/lambda',
-      color: 'bg-orange-500',
+      gradient: 'from-orange-500 to-orange-600',
+      bgGradient: 'from-orange-500/10 to-orange-600/10',
     },
   ];
 
@@ -98,6 +105,8 @@ export default function DashboardPage() {
       resource: 'database-password',
       time: '2 minutes ago',
       type: 'secret',
+      icon: Database,
+      color: 'text-blue-500',
     },
     {
       id: 2,
@@ -105,6 +114,8 @@ export default function DashboardPage() {
       resource: 'config.json',
       time: '5 minutes ago',
       type: 'file',
+      icon: FileText,
+      color: 'text-green-500',
     },
     {
       id: 3,
@@ -112,6 +123,8 @@ export default function DashboardPage() {
       resource: 'web-app',
       time: '10 minutes ago',
       type: 'container',
+      icon: Server,
+      color: 'text-purple-500',
     },
     {
       id: 4,
@@ -119,6 +132,8 @@ export default function DashboardPage() {
       resource: 'data-processor',
       time: '15 minutes ago',
       type: 'lambda',
+      icon: Code,
+      color: 'text-orange-500',
     },
   ];
 
@@ -126,7 +141,7 @@ export default function DashboardPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </Layout>
     );
@@ -134,88 +149,110 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">
-            Welcome back, {user?.name}. Here's what's happening with your resources.
-          </p>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/10 to-primary/20">
+              <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-muted-foreground">
+                Welcome back, {user?.name}. Here's what's happening with your resources.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <Card>
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Secrets</CardTitle>
-              <Database className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-foreground">Secrets</CardTitle>
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Database className="h-4 w-4 text-blue-500" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.secrets}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-foreground">{stats.secrets}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
                 +2 from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Storage Buckets</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-foreground">Storage Buckets</CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <FileText className="h-4 w-4 text-green-500" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.buckets}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-foreground">{stats.buckets}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
                 +1 from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Files</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-foreground">Files</CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <FileText className="h-4 w-4 text-purple-500" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.files}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-foreground">{stats.files}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
                 +5 from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Containers</CardTitle>
-              <Server className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-foreground">Containers</CardTitle>
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <Server className="h-4 w-4 text-orange-500" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.containers}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-foreground">{stats.containers}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
                 +1 from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-all duration-200 border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-foreground">Users</CardTitle>
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.users}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-foreground">{stats.users}</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
                 +2 from last week
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Quick Actions */}
-          <Card>
+          <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
+              <CardTitle className="text-foreground">Quick Actions</CardTitle>
               <CardDescription>
                 Common tasks to get you started
               </CardDescription>
@@ -224,18 +261,19 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {quickActions.map((action) => (
                   <Link key={action.title} href={action.href}>
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer border-border/50 group">
                       <CardContent className="p-4">
                         <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-lg ${action.color}`}>
-                            <action.icon className="h-5 w-5 text-white" />
+                          <div className={`p-2.5 rounded-lg bg-gradient-to-br ${action.bgGradient} group-hover:scale-105 transition-transform`}>
+                            <action.icon className={`h-5 w-5 bg-gradient-to-br ${action.gradient} bg-clip-text text-transparent`} />
                           </div>
-                          <div>
-                            <h3 className="font-medium">{action.title}</h3>
+                          <div className="flex-1">
+                            <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">{action.title}</h3>
                             <p className="text-sm text-muted-foreground">
                               {action.description}
                             </p>
                           </div>
+                          <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
                       </CardContent>
                     </Card>
@@ -246,9 +284,9 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent Activity */}
-          <Card>
+          <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle className="text-foreground">Recent Activity</CardTitle>
               <CardDescription>
                 Latest actions across your resources
               </CardDescription>
@@ -256,20 +294,23 @@ export default function DashboardPage() {
             <CardContent>
               <div className="space-y-4">
                 {recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center space-x-4">
+                  <div key={activity.id} className="flex items-center space-x-4 p-3 rounded-lg hover:bg-accent/30 transition-colors">
                     <div className="flex-shrink-0">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className={`p-2 rounded-lg bg-accent/50`}>
+                        <activity.icon className={`h-4 w-4 ${activity.color}`} />
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-foreground">
                         {activity.action}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         {activity.resource}
                       </p>
                     </div>
-                    <div className="flex-shrink-0">
-                      <Badge variant="secondary" className="text-xs">
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <Badge variant="secondary" className="text-xs bg-secondary/50">
                         {activity.time}
                       </Badge>
                     </div>
@@ -281,10 +322,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Organization Info */}
-        <Card>
+        <Card className="border-border/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Building className="h-5 w-5 text-primary" />
+              </div>
               Organization Information
             </CardTitle>
             <CardDescription>
@@ -293,27 +336,27 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Organization</h3>
-                <p className="text-sm text-gray-600">{user?.organization.name}</p>
+              <div className="space-y-2">
+                <h3 className="font-medium text-foreground">Organization</h3>
+                <p className="text-sm text-muted-foreground">{user?.organization.name}</p>
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Your Role</h3>
-                <Badge variant="outline">{user?.role.name}</Badge>
+              <div className="space-y-2">
+                <h3 className="font-medium text-foreground">Your Role</h3>
+                <Badge variant="outline" className="bg-secondary/20">{user?.role.name}</Badge>
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Permissions</h3>
+              <div className="space-y-2">
+                <h3 className="font-medium text-foreground">Permissions</h3>
                 <div className="flex flex-wrap gap-1">
                   {user?.role.permissions.map((permission) => (
-                    <Badge key={permission.id} variant="secondary">
+                    <Badge key={permission.id} variant="secondary" className="bg-accent/50 text-accent-foreground">
                       {permission.name}
                     </Badge>
                   ))}
                 </div>
               </div>
-              <div>
-                <h3 className="font-medium text-gray-900 mb-2">Account</h3>
-                <p className="text-sm text-gray-600">{user?.email}</p>
+              <div className="space-y-2">
+                <h3 className="font-medium text-foreground">Account</h3>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
               </div>
             </div>
           </CardContent>

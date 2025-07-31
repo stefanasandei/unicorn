@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"binomeway.com/entry/application"
+	"github.com/entry/application"
 )
 
 func main() {

@@ -1,13 +1,14 @@
 package application
 
 import (
-	"binomeway.com/entry/repository/worker"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
+
+	"github.com/entry/repository/worker"
+	"github.com/redis/go-redis/v9"
 )
 
 type FailedMessage struct {

@@ -1,14 +1,7 @@
 package stores
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"unicorn-api/internal/models"
@@ -26,10 +19,13 @@ type SecretStoreInterface interface {
 	GetSecret(userID, secretID uuid.UUID) (*models.Secret, string, error)
 	UpdateSecret(userID, secretID uuid.UUID, value, metadata string) error
 	DeleteSecret(userID, secretID uuid.UUID) error
+	RotateKeys(userID uuid.UUID) error
+	GetKeyVersions(userID uuid.UUID) ([]KeyVersion, error)
 }
 
 type SecretStore struct {
-	db *gorm.DB
+	db         *gorm.DB
+	keyManager *KeyManager
 }
 
 // NewSecretStore creates a new SecretStore with SQLite
@@ -43,59 +39,32 @@ func NewSecretStore(dataSourceName string) (*SecretStore, error) {
 	if err := db.AutoMigrate(&models.Secret{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate secret schema: %w", err)
 	}
-	return &SecretStore{db: db}, nil
-}
 
-// deriveKey creates a 32-byte key from the user ID (for demo; use a real KMS in prod)
-func deriveKey(userID uuid.UUID) []byte {
-	h := sha256.Sum256([]byte(userID.String()))
-	return h[:]
-}
+	keyManager, err := NewKeyManager(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create key manager: %w", err)
+	}
 
-func encryptSecret(plainText string, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-	cipherText := gcm.Seal(nonce, nonce, []byte(plainText), nil)
-	return base64.StdEncoding.EncodeToString(cipherText), nil
-}
-
-func decryptSecret(cipherText string, key []byte) (string, error) {
-	data, err := base64.StdEncoding.DecodeString(cipherText)
-	if err != nil {
-		return "", err
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	if len(data) < gcm.NonceSize() {
-		return "", errors.New("malformed ciphertext")
-	}
-	nonce, cipherData := data[:gcm.NonceSize()], data[gcm.NonceSize():]
-	plain, err := gcm.Open(nil, nonce, cipherData, nil)
-	if err != nil {
-		return "", err
-	}
-	return string(plain), nil
+	return &SecretStore{
+		db:         db,
+		keyManager: keyManager,
+	}, nil
 }
 
 // CreateSecret stores a new encrypted secret
 func (s *SecretStore) CreateSecret(userID uuid.UUID, name, value, metadata string) (*models.Secret, error) {
-	key := deriveKey(userID)
+	// Get current key version
+	keyVersion, err := s.keyManager.GetCurrentKeyVersion(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current key version: %w", err)
+	}
+
+	// Get key for current version
+	key, err := s.keyManager.GetOrCreateKey(userID, keyVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key: %w", err)
+	}
+
 	encrypted, err := encryptSecret(value, key)
 	if err != nil {
 		return nil, err
@@ -107,6 +76,7 @@ func (s *SecretStore) CreateSecret(userID uuid.UUID, name, value, metadata strin
 		Name:           name,
 		EncryptedValue: encrypted,
 		UserID:         userID,
+		KeyVersion:     keyVersion,
 		MetadataRaw:    metadata,
 	}
 	if err := s.db.Create(secret).Error; err != nil {
@@ -121,7 +91,13 @@ func (s *SecretStore) GetSecret(userID, secretID uuid.UUID) (*models.Secret, str
 	if err := s.db.First(&secret, "id = ? AND user_id = ?", secretID, userID).Error; err != nil {
 		return nil, "", err
 	}
-	key := deriveKey(userID)
+
+	// Get key for the secret's version
+	key, err := s.keyManager.GetOrCreateKey(userID, secret.KeyVersion)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get key for version %d: %w", secret.KeyVersion, err)
+	}
+
 	plain, err := decryptSecret(secret.EncryptedValue, key)
 	if err != nil {
 		return nil, "", err
@@ -138,12 +114,13 @@ func (s *SecretStore) ListSecrets(userID uuid.UUID) ([]models.SecretResponse, er
 	resp := make([]models.SecretResponse, len(secrets))
 	for i, s := range secrets {
 		resp[i] = models.SecretResponse{
-			ID:        s.ID,
-			Name:      s.Name,
-			CreatedAt: s.CreatedAt,
-			UpdatedAt: s.UpdatedAt,
-			UserID:    s.UserID,
-			Metadata:  s.MetadataRaw,
+			ID:         s.ID,
+			Name:       s.Name,
+			CreatedAt:  s.CreatedAt,
+			UpdatedAt:  s.UpdatedAt,
+			UserID:     s.UserID,
+			KeyVersion: s.KeyVersion,
+			Metadata:   s.MetadataRaw,
 		}
 	}
 	return resp, nil
@@ -155,13 +132,25 @@ func (s *SecretStore) UpdateSecret(userID, secretID uuid.UUID, newValue, newMeta
 	if err := s.db.First(&secret, "id = ? AND user_id = ?", secretID, userID).Error; err != nil {
 		return err
 	}
-	key := deriveKey(userID)
+
 	if newValue != "" {
+		// Get current key version for new encryption
+		currentKeyVersion, err := s.keyManager.GetCurrentKeyVersion(userID)
+		if err != nil {
+			return fmt.Errorf("failed to get current key version: %w", err)
+		}
+
+		key, err := s.keyManager.GetOrCreateKey(userID, currentKeyVersion)
+		if err != nil {
+			return fmt.Errorf("failed to get key: %w", err)
+		}
+
 		encrypted, err := encryptSecret(newValue, key)
 		if err != nil {
 			return err
 		}
 		secret.EncryptedValue = encrypted
+		secret.KeyVersion = currentKeyVersion
 	}
 	if newMetadata != "" {
 		secret.MetadataRaw = newMetadata
@@ -173,4 +162,14 @@ func (s *SecretStore) UpdateSecret(userID, secretID uuid.UUID, newValue, newMeta
 // DeleteSecret removes a secret (owner only)
 func (s *SecretStore) DeleteSecret(userID, secretID uuid.UUID) error {
 	return s.db.Delete(&models.Secret{}, "id = ? AND user_id = ?", secretID, userID).Error
+}
+
+// RotateKeys rotates keys for a user
+func (s *SecretStore) RotateKeys(userID uuid.UUID) error {
+	return s.keyManager.RotateKeys(userID)
+}
+
+// GetKeyVersions gets all key versions for a user
+func (s *SecretStore) GetKeyVersions(userID uuid.UUID) ([]KeyVersion, error) {
+	return s.keyManager.GetKeyVersions(userID)
 }

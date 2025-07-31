@@ -174,7 +174,10 @@ export interface ResponseTask {
 
 // Legacy types for backward compatibility
 export interface LambdaExecuteRequest {
-  runtime: string;
+  runtime: {
+    name: string;
+    version?: string;
+  };
   code: string;
   handler?: string;
   environment?: Record<string, string>;

@@ -1,9 +1,10 @@
 package model
 
 import (
-	"binomeway.com/common/model"
 	"fmt"
 	"testing"
+
+	"github.com/common/model"
 )
 
 func TestExecuteSystemCommand(t *testing.T) {

@@ -161,8 +161,8 @@ export default function LambdaPage() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Code Execution</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-foreground">Code Execution</h1>
+          <p className="text-muted-foreground">
             Execute code in isolated environments with various runtimes
           </p>
         </div>
@@ -184,7 +184,7 @@ export default function LambdaPage() {
                     id="runtime"
                     value={runtimeName}
                     onChange={(e) => setRuntimeName(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="w-full p-2 border border-border/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary/20"
                   >
                     {runtimes.map((rt) => (
                       <option key={rt.language} value={rt.language}>
@@ -199,7 +199,7 @@ export default function LambdaPage() {
                     id="version"
                     value={runtimeVersion}
                     onChange={(e) => setRuntimeVersion(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="w-full p-2 border border-border/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary/20"
                   >
                     {getRuntimeVersions().map((version) => (
                       <option key={version} value={version}>
@@ -218,8 +218,9 @@ export default function LambdaPage() {
                   onChange={(e) => setTimeout(e.target.value)}
                   placeholder="500ms"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Time limit for execution (e.g., "500ms", "5s")
+                <p className="text-sm text-muted-foreground mt-1">
+                  Time limit for execution (e.g., &quot;500ms&quot;,
+                  &quot;5s&quot;)
                 </p>
               </div>
 
@@ -251,7 +252,7 @@ export default function LambdaPage() {
                   id="entry"
                   value={entryCode}
                   onChange={(e) => setEntryCode(e.target.value)}
-                  className="w-full h-32 p-3 border border-gray-300 rounded-md font-mono text-sm"
+                  className="w-full h-32 p-3 border border-border/50 rounded-md font-mono text-sm bg-background text-foreground focus:border-primary focus:ring-primary/20"
                   placeholder="// Write your main code here..."
                 />
               </div>
@@ -267,7 +268,7 @@ export default function LambdaPage() {
                   {files.map((file, index) => (
                     <div
                       key={index}
-                      className="border border-gray-200 rounded-md p-3"
+                      className="border border-border/50 rounded-md p-3 bg-card"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <Input
@@ -292,7 +293,7 @@ export default function LambdaPage() {
                         onChange={(e) =>
                           updateFile(index, "contents", e.target.value)
                         }
-                        className="w-full h-20 p-2 border border-gray-300 rounded-md font-mono text-sm"
+                        className="w-full h-20 p-2 border border-border/50 rounded-md font-mono text-sm bg-background text-foreground focus:border-primary focus:ring-primary/20"
                       />
                     </div>
                   ))}
@@ -323,22 +324,28 @@ export default function LambdaPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium">Compile Time:</span>
-                      <span className="text-sm">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">
+                        Compile Time:
+                      </span>
+                      <span className="text-sm text-muted-foreground">
                         {result.output.compile.time}ms
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Cpu className="h-4 w-4 text-green-500" />
-                      <span className="text-sm font-medium">Run Time:</span>
-                      <span className="text-sm">
+                      <Cpu className="h-4 w-4 text-success" />
+                      <span className="text-sm font-medium text-foreground">
+                        Run Time:
+                      </span>
+                      <span className="text-sm text-muted-foreground">
                         {result.output.run.time}ms
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Code className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">Status:</span>
+                      <Code className="h-4 w-4 text-accent" />
+                      <span className="text-sm font-medium text-foreground">
+                        Status:
+                      </span>
                       <Badge
                         variant={
                           result.status === "successful"
@@ -360,27 +367,27 @@ export default function LambdaPage() {
                     <TabsContent value="run">
                       <div className="space-y-2">
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-sm font-medium text-foreground">
                             Standard Output
                           </Label>
-                          <div className="bg-gray-50 p-3 rounded-md">
-                            <pre className="text-sm overflow-x-auto">
+                          <div className="bg-muted/50 p-3 rounded-md">
+                            <pre className="text-sm overflow-x-auto text-foreground">
                               {result.output.run.stdout || "(empty)"}
                             </pre>
                           </div>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-sm font-medium text-foreground">
                             Standard Error
                           </Label>
-                          <div className="bg-gray-50 p-3 rounded-md">
-                            <pre className="text-sm overflow-x-auto">
+                          <div className="bg-muted/50 p-3 rounded-md">
+                            <pre className="text-sm overflow-x-auto text-foreground">
                               {result.output.run.stderr || "(empty)"}
                             </pre>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-medium text-foreground">
                             Exit Code:
                           </span>
                           <Badge
@@ -399,27 +406,27 @@ export default function LambdaPage() {
                     <TabsContent value="compile">
                       <div className="space-y-2">
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-sm font-medium text-foreground">
                             Standard Output
                           </Label>
-                          <div className="bg-gray-50 p-3 rounded-md">
-                            <pre className="text-sm overflow-x-auto">
+                          <div className="bg-muted/50 p-3 rounded-md">
+                            <pre className="text-sm overflow-x-auto text-foreground">
                               {result.output.compile.stdout || "(empty)"}
                             </pre>
                           </div>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">
+                          <Label className="text-sm font-medium text-foreground">
                             Standard Error
                           </Label>
-                          <div className="bg-gray-50 p-3 rounded-md">
-                            <pre className="text-sm overflow-x-auto">
+                          <div className="bg-muted/50 p-3 rounded-md">
+                            <pre className="text-sm overflow-x-auto text-foreground">
                               {result.output.compile.stderr || "(empty)"}
                             </pre>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-medium text-foreground">
                             Exit Code:
                           </span>
                           <Badge
@@ -437,8 +444,8 @@ export default function LambdaPage() {
                   </Tabs>
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <Code className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <div className="text-center text-muted-foreground py-8">
+                  <Code className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p>Execute code to see results here</p>
                 </div>
               )}
@@ -450,13 +457,13 @@ export default function LambdaPage() {
         <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-red-500" />
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <AlertCircle className="h-5 w-5 text-destructive" />
                 Error
               </DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              <p className="text-gray-700">{errorMessage}</p>
+              <p className="text-foreground">{errorMessage}</p>
             </div>
             <DialogFooter>
               <Button onClick={() => setShowErrorDialog(false)}>OK</Button>
