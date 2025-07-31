@@ -2,7 +2,13 @@
 
 _Warning: augmented by AI_
 
+![photos/1.png](photos/1.png)
+
 A comprehensive cloud services platform providing Infrastructure as a Service (IaaS) capabilities with a modern web dashboard and robust API backend.
+
+![photos/2.png](photos/2.png)
+
+![photos/3.png](photos/3.png)
 
 ## 🏗️ Architecture Overview
 
