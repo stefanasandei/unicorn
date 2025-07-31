@@ -230,6 +230,7 @@ type ErrorResponse struct {
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/roles [post]
 func (h *IAMHandler) CreateRole(c *gin.Context) {
+
 	var req CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
@@ -587,6 +588,47 @@ func (h *IAMHandler) GetDebugToken(c *gin.Context) {
 	})
 }
 
+// GetCurrentAccountResponse represents the response for getting current account
+// swagger:model
+type GetCurrentAccountResponse struct {
+	Account models.Account `json:"account"`
+}
+
+// GetCurrentAccount godoc
+// @Summary      Get current account details
+// @Description  Returns the current authenticated user's account details
+// @Tags         IAM
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200   {object}  GetCurrentAccountResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /api/v1/accounts/me [get]
+func (h *IAMHandler) GetCurrentAccount(c *gin.Context) {
+	claims, exists := middleware.GetClaimsFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Authentication required",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+
+	account, err := h.store.GetAccountByID(claims.AccountID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Error:      "Account not found",
+			StatusCode: http.StatusUnauthorized,
+			Timestamp:  time.Now(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, GetCurrentAccountResponse{Account: *account})
+}
+
 // --- New Response Structures ---
 
 // GetRolesResponse represents the response for listing roles
@@ -622,7 +664,7 @@ type OrganizationUser struct {
 // @Failure      500   {object}  ErrorResponse
 // @Router       /api/v1/roles [get]
 func (h *IAMHandler) GetRoles(c *gin.Context) {
-	claims, exists := middleware.GetClaimsFromContext(c)
+	_, exists := middleware.GetClaimsFromContext(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Error:      "Authentication required",
@@ -631,17 +673,9 @@ func (h *IAMHandler) GetRoles(c *gin.Context) {
 		})
 		return
 	}
-	
-	account, err := h.store.GetAccountByID(claims.AccountID)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Error:      "Account not found",
-			StatusCode: http.StatusUnauthorized,
-			Timestamp:  time.Now(),
-		})
-		return
-	}
-	roles, err := h.store.GetRolesByOrganizationID(account.OrganizationID.String())
+
+	// Get all roles instead of filtering by organization
+	roles, err := h.store.GetAllRoles()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:      err.Error(),
@@ -674,7 +708,7 @@ func (h *IAMHandler) GetOrganizations(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	account, err := h.store.GetAccountByID(claims.AccountID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{

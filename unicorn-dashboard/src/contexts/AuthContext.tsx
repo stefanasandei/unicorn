@@ -39,10 +39,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const validation = await apiClient.validateToken(storedToken);
           if (validation.valid) {
             setToken(storedToken);
-            // Fetch user data
-            const orgData = await apiClient.getOrganizations();
-            // For now, we'll create a basic user object
-            // In a real app, you'd have a user endpoint
+            // Create a basic user object without fetching organization data
+            // Organization data will be fetched when needed
             setUser({
               id: validation.claims.account_id,
               name: "User", // This would come from a user endpoint
@@ -56,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               },
               organization: {
                 id: "",
-                name: orgData.organization_name,
+                name: "Loading...",
                 created_at: "",
                 updated_at: "",
               },
@@ -81,8 +79,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem("token", response.token);
       setToken(response.token);
 
-      // Fetch user data after login
-      const orgData = await apiClient.getOrganizations();
+      // Create a basic user object without fetching organization data
+      // Organization data will be fetched when needed
       setUser({
         id: "user-id", // This would come from the login response or a user endpoint
         name: "User",
@@ -96,7 +94,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
         organization: {
           id: "",
-          name: orgData.organization_name,
+          name: "Loading...",
           created_at: "",
           updated_at: "",
         },

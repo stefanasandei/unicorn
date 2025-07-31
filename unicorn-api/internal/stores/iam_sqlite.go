@@ -235,6 +235,15 @@ func (s *GORMIAMStore) GetRolesByOrganizationID(orgID string) ([]models.Role, er
 	return roles, nil
 }
 
+// GetAllRoles returns all roles in the system
+func (s *GORMIAMStore) GetAllRoles() ([]models.Role, error) {
+	var roles []models.Role
+	if err := s.db.Find(&roles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get all roles: %w", err)
+	}
+	return roles, nil
+}
+
 // GetOrganizationByID retrieves an organization by its ID
 func (s *GORMIAMStore) GetOrganizationByID(orgID string) (*models.Organization, error) {
 	var org models.Organization

@@ -100,6 +100,33 @@ class ApiClient {
     return response.data;
   }
 
+  async getOrganizations(): Promise<{
+    organization_name: string;
+    users: Array<{
+      id: string;
+      name: string;
+      email?: string;
+      role_id?: string;
+    }>;
+  }> {
+    const response = await this.client.get("/api/v1/organizations");
+    return response.data;
+  }
+
+  async getCurrentUser(): Promise<{
+    account_id: string;
+    organization_id: string;
+    role_id: string;
+  }> {
+    // Get account details from the backend
+    const response = await this.client.get("/api/v1/accounts/me");
+    return {
+      account_id: response.data.account.id,
+      organization_id: response.data.account.organization_id,
+      role_id: response.data.account.role_id,
+    };
+  }
+
   async createUser(
     orgId: string,
     data: CreateUserRequest
@@ -117,14 +144,6 @@ class ApiClient {
   // IAM endpoints
   async getRoles(): Promise<{ roles: Role[] }> {
     const response = await this.client.get("/api/v1/roles");
-    return response.data;
-  }
-
-  async getOrganizations(): Promise<{
-    organization_name: string;
-    users: Array<{ id: string; name: string; email: string }>;
-  }> {
-    const response = await this.client.get("/api/v1/organizations");
     return response.data;
   }
 

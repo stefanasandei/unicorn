@@ -10,6 +10,9 @@ import (
 
 // SetupRoutes configures all the routes for the application
 func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHandler *handlers.StorageHandler, computeHandler *handlers.ComputeHandler, lambdaHandler *handlers.LambdaHandler, secretHandler *handlers.SecretsHandler, rdbHandler *handlers.RDBHandler, monitoringHandler *handlers.MonitoringHandler, config *config.Config) {
+	// Apply CORS middleware to all routes
+	router.Use(middleware.CORS())
+
 	// API v1 group
 	v1 := router.Group("/api/v1")
 	{
@@ -34,6 +37,7 @@ func SetupRoutes(router *gin.Engine, iamHandler *handlers.IAMHandler, storageHan
 			protected.GET("/roles", iamHandler.GetRoles)
 			protected.POST("/roles/assign", iamHandler.AssignRole)
 			protected.GET("/organizations", iamHandler.GetOrganizations)
+			protected.GET("/accounts/me", iamHandler.GetCurrentAccount)
 
 			// Secrets Manager routes
 			protected.GET("/secrets", secretHandler.ListSecrets)

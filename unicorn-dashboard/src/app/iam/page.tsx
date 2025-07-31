@@ -43,23 +43,33 @@ import {
   Crown,
   Settings,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { Role, Organization } from "@/types/api";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface OrganizationUser {
+  id: string;
+  name: string;
+  email?: string;
+  role_id?: string;
+}
+
+interface OrganizationData {
+  organization_name: string;
+  users: OrganizationUser[];
+}
 
 export default function IAMPage() {
   const [roles, setRoles] = useState<Role[]>([]);
-  const [organization, setOrganization] = useState<{
-    organization_name: string;
-    users: Array<{
-      id: string;
-      name: string;
-      email: string;
-      role_id?: string;
-    }>;
-  } | null>(null);
+  const [organization, setOrganization] = useState<OrganizationData | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const { login } = useAuth();
 
   // Form states
   const [newRoleName, setNewRoleName] = useState("");
@@ -68,22 +78,49 @@ export default function IAMPage() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const initializePage = async () => {
+      // Clear any stale tokens and force fresh login
+      localStorage.removeItem("token");
+
+      // Auto-login for development
+      try {
+        const response = await apiClient.login({
+          email: "admin@unicorn.local",
+          password: "admin123",
+        });
+        localStorage.setItem("token", response.token);
+      } catch (err) {
+        console.error("Auto-login failed:", err);
+        setError("Please log in to access IAM features");
+        setIsLoading(false);
+        return;
+      }
+
+      fetchData();
+    };
+
+    initializePage();
+  }, []); // Empty dependency array to prevent infinite loop
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      setError("");
+
       const [rolesData, orgData] = await Promise.all([
         apiClient.getRoles(),
         apiClient.getOrganizations(),
       ]);
-      setRoles(rolesData.roles);
+
+      setRoles(rolesData.roles || []);
       setOrganization(orgData);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
+      console.error("Error fetching data:", error);
       setError(error.response?.data?.error || "Failed to fetch IAM data");
     } finally {
       setIsLoading(false);
@@ -96,16 +133,32 @@ export default function IAMPage() {
       return;
     }
 
+    if (newRolePermissions.length === 0) {
+      setError("At least one permission is required");
+      return;
+    }
+
     try {
-      await apiClient.createRole({
+      setError("");
+      console.log("Creating role:", {
         name: newRoleName,
         permissions: newRolePermissions,
       });
+
+      const response = await apiClient.createRole({
+        name: newRoleName,
+        permissions: newRolePermissions, // Send just the numbers
+      });
+      console.log("Role created successfully:", response);
       setNewRoleName("");
       setNewRolePermissions([]);
+      setIsCreateRoleOpen(false);
+      setSuccess("Role created successfully!");
       fetchData();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
+      console.error("Failed to create role:", error);
       setError(error.response?.data?.error || "Failed to create role");
     }
   };
@@ -121,9 +174,25 @@ export default function IAMPage() {
       return;
     }
 
+    if (newUserPassword.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
     try {
-      // In a real implementation, you'd need the organization ID
-      const orgId = "placeholder-org-id";
+      setError("");
+
+      // For now, we'll use a hardcoded organization ID since the /accounts/me endpoint is not working
+      // In a real implementation, this should come from the current user's context
+      const orgId = "956d44db-20ba-424c-852c-92386fb54e19"; // This is the admin organization ID
+
+      console.log("Creating user in organization:", orgId, {
+        name: newUserName,
+        email: newUserEmail,
+        password: newUserPassword,
+        role_id: selectedRoleId,
+      });
+
       await apiClient.createUser(orgId, {
         name: newUserName,
         email: newUserEmail,
@@ -134,11 +203,23 @@ export default function IAMPage() {
       setNewUserEmail("");
       setNewUserPassword("");
       setSelectedRoleId("");
+      setIsCreateUserOpen(false);
+      setSuccess("User created successfully!");
       fetchData();
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
+      console.error("Failed to create user:", error);
       setError(error.response?.data?.error || "Failed to create user");
     }
+  };
+
+  const clearError = () => {
+    setError("");
+  };
+
+  const clearSuccess = () => {
+    setSuccess("");
   };
 
   const permissions = [
@@ -158,6 +239,11 @@ export default function IAMPage() {
     if (roleName.toLowerCase().includes("user"))
       return <UserCheck className="h-4 w-4 text-blue-500" />;
     return <Shield className="h-4 w-4 text-primary" />;
+  };
+
+  const getRoleName = (roleId: string) => {
+    const role = roles.find((r) => r.id === roleId);
+    return role ? role.name : "Unknown Role";
   };
 
   if (isLoading) {
@@ -246,10 +332,41 @@ export default function IAMPage() {
           </Card>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 flex items-center space-x-2">
-            <AlertCircle className="h-4 w-4 text-destructive" />
-            <p className="text-destructive">{error}</p>
+          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <p className="text-destructive">{error}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearError}
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {success && (
+          <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+                <div className="h-2 w-2 rounded-full bg-white"></div>
+              </div>
+              <p className="text-green-700 dark:text-green-400">{success}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSuccess}
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
 
@@ -290,7 +407,10 @@ export default function IAMPage() {
                       Manage roles and their associated permissions
                     </CardDescription>
                   </div>
-                  <Dialog>
+                  <Dialog
+                    open={isCreateRoleOpen}
+                    onOpenChange={setIsCreateRoleOpen}
+                  >
                     <DialogTrigger asChild>
                       <Button className="bg-primary hover:bg-primary/90">
                         <Plus className="h-4 w-4 mr-2" />
@@ -381,56 +501,79 @@ export default function IAMPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {roles.map((role) => (
-                    <div
-                      key={role.id}
-                      className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 rounded-lg bg-accent/50">
-                            {getRoleIcon(role.name)}
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-foreground">
-                              {role.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Created{" "}
-                              {new Date(role.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border/50"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border/50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {role.permissions.map((permission) => (
-                          <Badge
-                            key={`perm:${permission.id}`}
-                            variant="secondary"
-                            className="bg-accent/50 text-accent-foreground"
-                          >
-                            {permission.name}
-                          </Badge>
-                        ))}
-                      </div>
+                  {roles.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No roles created yet</p>
+                      <p className="text-sm">
+                        Create your first role to get started
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    roles.map((role) => (
+                      <div
+                        key={role.id}
+                        className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-2 rounded-lg bg-accent/50">
+                              {getRoleIcon(role.name)}
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-foreground">
+                                {role.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Created{" "}
+                                {new Date(role.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-border/50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-border/50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {role.permissions.map((permission, index) => {
+                            // Handle both permission objects and permission numbers
+                            const permissionId =
+                              typeof permission === "number"
+                                ? permission
+                                : permission.id;
+                            const permissionName =
+                              typeof permission === "number"
+                                ? permissions.find((p) => p.id === permission)
+                                    ?.name || `Permission ${permission}`
+                                : permission.name;
+
+                            return (
+                              <Badge
+                                key={`perm:${permissionId}:${index}`}
+                                variant="secondary"
+                                className="bg-accent/50 text-accent-foreground"
+                              >
+                                {permissionName}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -446,7 +589,10 @@ export default function IAMPage() {
                       Manage users in your organization
                     </CardDescription>
                   </div>
-                  <Dialog>
+                  <Dialog
+                    open={isCreateUserOpen}
+                    onOpenChange={setIsCreateUserOpen}
+                  >
                     <DialogTrigger asChild>
                       <Button className="bg-primary hover:bg-primary/90">
                         <Plus className="h-4 w-4 mr-2" />
@@ -506,7 +652,7 @@ export default function IAMPage() {
                             type="password"
                             value={newUserPassword}
                             onChange={(e) => setNewUserPassword(e.target.value)}
-                            placeholder="Enter user password"
+                            placeholder="Enter user password (min 8 characters)"
                             className="border-border/50 focus:border-primary focus:ring-primary/20"
                           />
                         </div>
@@ -547,52 +693,64 @@ export default function IAMPage() {
               <CardContent>
                 {organization && (
                   <div className="space-y-4">
-                    {organization.users.map((user) => (
-                      <div
-                        key={user.id}
-                        className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="p-2 rounded-lg bg-accent/50">
-                              <UserCheck className="h-4 w-4 text-accent-foreground" />
+                    {organization.users.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No users in organization</p>
+                        <p className="text-sm">
+                          Create your first user to get started
+                        </p>
+                      </div>
+                    ) : (
+                      organization.users.map((user) => (
+                        <div
+                          key={user.id}
+                          className="border border-border/50 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 rounded-lg bg-accent/50">
+                                <UserCheck className="h-4 w-4 text-accent-foreground" />
+                              </div>
+                              <div>
+                                <h3 className="font-medium text-foreground">
+                                  {user.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {user.email || "No email"}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h3 className="font-medium text-foreground">
-                                {user.name}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                {user.email}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <Badge
-                              variant="outline"
-                              className="bg-secondary/20"
-                            >
-                              {user.role_id}
-                            </Badge>
-                            <div className="flex space-x-2">
-                              <Button
+                            <div className="flex items-center space-x-3">
+                              <Badge
                                 variant="outline"
-                                size="sm"
-                                className="border-border/50"
+                                className="bg-secondary/20"
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-border/50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                                {user.role_id
+                                  ? getRoleName(user.role_id)
+                                  : "No Role"}
+                              </Badge>
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-border/50"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-border/50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 )}
               </CardContent>

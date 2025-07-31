@@ -6,7 +6,7 @@ export interface Permission {
 export interface Role {
   id: string;
   name: string;
-  permissions: Permission[];
+  permissions: (Permission | number)[];
   created_at: string;
   updated_at: string;
 }

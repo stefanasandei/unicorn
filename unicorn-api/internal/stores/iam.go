@@ -25,6 +25,7 @@ type IAMStore interface {
 	// --- Added for GET /roles and /organizations ---
 	GetAccountByID(accountID string) (*models.Account, error)
 	GetRolesByOrganizationID(orgID string) ([]models.Role, error)
+	GetAllRoles() ([]models.Role, error)
 	GetOrganizationByID(orgID string) (*models.Organization, error)
 	GetAccountsByOrganizationID(orgID string) ([]models.Account, error)
 }
