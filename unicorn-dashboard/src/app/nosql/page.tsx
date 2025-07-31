@@ -178,7 +178,7 @@ export default function NoSQLPage() {
         _id: "507f1f77bcf86cd799439013",
         eventType: "page_view",
         userId: "507f1f77bcf86cd799439011",
-        page: "/dashboard",
+        page: "/monitoring",
         timestamp: "2024-01-20T14:22:00Z",
       },
       createdAt: "2024-01-20T14:22:00Z",
