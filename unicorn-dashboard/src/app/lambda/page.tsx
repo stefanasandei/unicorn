@@ -23,9 +23,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Code, Play, Zap, Clock, Cpu, AlertCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Code,
+  Play,
+  Zap,
+  Clock,
+  Cpu,
+  AlertCircle,
+  Settings,
+} from "lucide-react";
 import { apiClient } from "@/lib/api";
-import { ExecutionRequest, ResponseTask, File } from "@/types/api";
+import { ExecutionRequest, ResponseTask, File, Permissions } from "@/types/api";
 
 export default function LambdaPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +53,15 @@ export default function LambdaPage() {
   const [timeout, setTimeout] = useState("500ms");
   const [environment, setEnvironment] = useState("");
 
+  // Granular control states
+  const [maxOpenedFiles, setMaxOpenedFiles] = useState<number>(10);
+  const [maxProcesses, setMaxProcesses] = useState<number>(5);
+  const [permissions, setPermissions] = useState<Permissions>({
+    read: false,
+    write: false,
+    network: false,
+  });
+
   // Dialog states
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -57,7 +75,7 @@ export default function LambdaPage() {
     try {
       const runtimeData = await apiClient.getRuntimes();
       setRuntimes(runtimeData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch runtimes:", err);
     }
   };
@@ -76,6 +94,35 @@ export default function LambdaPage() {
     setStdin("2");
     setTimeout("500ms");
     setEnvironment('{"PROD": "false"}');
+  };
+
+  const loadGoPreset = () => {
+    setRuntimeName("go");
+    setRuntimeVersion("1.20");
+    setEntryCode(`package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	var n int
+	fmt.Scanln(&n)
+	fmt.Println(n + 2)
+}`);
+    setFiles([
+      {
+        name: "utils.go",
+        contents: `package main
+
+func multiply(a, b int) int {
+	return a * b
+}`,
+      },
+    ]);
+    setStdin("5");
+    setTimeout("1s");
+    setEnvironment('{"DEBUG": "true"}');
   };
 
   const handleExecute = async () => {
@@ -114,6 +161,9 @@ export default function LambdaPage() {
           stdin: stdin || undefined,
           time: timeout || undefined,
           env: Object.keys(env).length > 0 ? env : undefined,
+          max_opened_files: maxOpenedFiles,
+          max_processes: maxProcesses,
+          permissions: permissions,
         },
       };
 
@@ -121,12 +171,18 @@ export default function LambdaPage() {
 
       const response = await apiClient.executeCode(request);
       setResult(response);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Execute error:", err);
-      const errorMsg =
-        err.response?.data?.message ||
-        err.response?.data?.details ||
-        "Failed to execute code";
+      let errorMsg = "Failed to execute code";
+      if (err && typeof err === "object" && "response" in err) {
+        const response = (
+          err as {
+            response?: { data?: { message?: string; details?: string } };
+          }
+        ).response;
+        errorMsg =
+          response?.data?.message || response?.data?.details || errorMsg;
+      }
       setErrorMessage(errorMsg);
       setShowErrorDialog(true);
     } finally {
@@ -246,6 +302,103 @@ export default function LambdaPage() {
                 />
               </div>
 
+              {/* Advanced Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Settings className="h-4 w-4" />
+                  <Label className="text-sm font-medium">
+                    Advanced Settings
+                  </Label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="maxOpenedFiles">Max Opened Files</Label>
+                    <Input
+                      id="maxOpenedFiles"
+                      type="number"
+                      value={maxOpenedFiles}
+                      onChange={(e) =>
+                        setMaxOpenedFiles(parseInt(e.target.value) || 10)
+                      }
+                      min="1"
+                      max="100"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="maxProcesses">Max Processes</Label>
+                    <Input
+                      id="maxProcesses"
+                      type="number"
+                      value={maxProcesses}
+                      onChange={(e) =>
+                        setMaxProcesses(parseInt(e.target.value) || 5)
+                      }
+                      min="1"
+                      max="20"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Permissions
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="readPermission"
+                        checked={permissions.read}
+                        onCheckedChange={(checked: boolean | "indeterminate") =>
+                          setPermissions({
+                            ...permissions,
+                            read: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="readPermission" className="text-sm">
+                        Read Access
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="writePermission"
+                        checked={permissions.write}
+                        onCheckedChange={(checked: boolean | "indeterminate") =>
+                          setPermissions({
+                            ...permissions,
+                            write: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="writePermission" className="text-sm">
+                        Write Access
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="networkPermission"
+                        checked={permissions.network}
+                        onCheckedChange={(checked: boolean | "indeterminate") =>
+                          setPermissions({
+                            ...permissions,
+                            network: checked === true,
+                          })
+                        }
+                      />
+                      <Label htmlFor="networkPermission" className="text-sm">
+                        Network Access
+                      </Label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Control what your code can access. Read allows file reading,
+                    Write allows file creation/modification, Network allows HTTP
+                    requests.
+                  </p>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="entry">Entry Code</Label>
                 <textarea
@@ -298,6 +451,23 @@ export default function LambdaPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={loadPreset}
+                  className="flex-1"
+                >
+                  Load Python Template
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={loadGoPreset}
+                  className="flex-1"
+                >
+                  Load Go Template
+                </Button>
               </div>
 
               <Button

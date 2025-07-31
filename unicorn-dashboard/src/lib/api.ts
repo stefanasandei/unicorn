@@ -253,7 +253,10 @@ class ApiClient {
   async getRuntimes(): Promise<
     Array<{ language: string; versions: string[] }>
   > {
-    return [{ language: "python3", versions: ["3.11", "3.9"] }];
+    return [
+      { language: "python3", versions: ["3.12", "3.11", "3.9"] },
+      { language: "go", versions: ["1.20", "1.19"] },
+    ];
   }
 
   // Debug endpoint
